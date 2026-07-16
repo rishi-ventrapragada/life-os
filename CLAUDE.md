@@ -22,6 +22,7 @@ You are building a personal life-tracking web app for a beginner developer who r
 5. Layouts use flex/grid with fluid sizing. No fixed pixel widths on containers. Desktop-first, responsive-friendly.
 
 ## Security
+- SECURITY.md is law. Its checklist items are part of every step's Definition of Done at the stage they apply to.
 - `.env*` files are git-ignored (verify in Step 0 and never remove). Never print, log, or commit secrets. Never paste keys into code; read from environment variables.
 - Supabase anon key in the client is fine; service-role key NEVER ships to the client.
 
