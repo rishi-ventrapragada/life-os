@@ -1,5 +1,23 @@
 # SESSION_3.md — Step 3: Wire Goals to Supabase (persistence — the data starts surviving)
 
+## ⏸ RESUME HERE (paused mid-Increment A, evening of 2026-07-16)
+
+**Plan approved** (increments A–E, in Claude's plan file). Design decision settled: **anonymous sign-in** bridges the auth gap until Step 5 — `signInAnonymously()` on first load, RLS `auth.uid() = user_id` from birth, anon user converts to the real account at Step 5 with the same user id (no migration).
+
+Done so far (Increment A):
+- `.mcp.json`: `read_only=true` **removed** — ⚠️ **write access is currently ON and must go back on in Increment E** (SECURITY.md Step 3 item). ⚠️ **The MCP server still needs reconnecting** (restart the Claude Code session / reload MCP) for the edit to take effect.
+- Stray-anon-user pollution note added below (accepted until Step 5).
+- `@supabase/supabase-js` installed from npm. (`npm audit`: 2 moderate pre-existing findings in Next's bundled postcss — parked as the pre-v2 audit item, not related to this step.)
+- Project URL + keys fetched via MCP; using the modern `sb_publishable_…` key (client-safe).
+
+**Exact next actions:**
+1. Write `.env.local` with `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY` (publishable key) and verify it's git-ignored (`git status` must not show it).
+2. Create `lib/supabase.ts` (browser client singleton, env vars only) — completes Increment A.
+3. Increment B: one migration via MCP `apply_migration` — `life_areas` + `goals`, both born with `user_id` + RLS owner-only policies; then `get_advisors(security)`.
+4. Also before the user enables anything else: **anonymous sign-ins toggle in the Supabase dashboard** (Authentication → Sign In / Up) — user action, not yet done.
+
+
+
 **Goal:** the Goals section keeps its data. Create the `life_areas` and `goals` tables via the Supabase MCP (with `user_id` + RLS from birth), wire GoalsSection's add/edit/delete/slider to the database, and retire local-only state.
 **Done when (from PRD §8):** a goal survives a hard refresh and is visible in the Supabase table editor. Verified by *doing both*, then committed, pushed, and confirmed live on Vercel.
 
@@ -34,5 +52,6 @@
 - Still no date logic: `lib/dates.ts` / `getTodayIST()` is Step 4. Deadline stays a display-only string.
 - Windows gotcha: if styles look stale or a port is haunted, kill node via PowerShell (`Get-Process node | Stop-Process -Force`) — bash `pkill` doesn't work.
 - Claude self-verifies visually with headless Chrome + playwright-core from its scratchpad (worked all through Step 2); persistence claims additionally need the Supabase table editor check.
+- **Accepted until Step 5 — stray anonymous users:** the pre-auth identity is Supabase anonymous sign-in, so ANY visitor to the public Vercel URL becomes a fresh anonymous user and seeds their own 5 `life_areas` rows. That's data pollution, not a breach — RLS still walls every user off. Don't share the URL around before Step 5. Step 5's login gate ends it; clean stray anon users (and their rows, via the `on delete cascade`) from the Supabase dashboard then.
 
 **After DoD passes: stop. Step 4 (`getTodayIST()` + midnight edge-case tests) is the next session's quest.**
