@@ -1,26 +1,150 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  /* Surfaces — near-black with a violet undertone */
+  --color-bg: #08070c;
+  --color-surface: #0f0e15;
+  --color-border: #1c1a26;
+
+  /* Accent — amethyst core, magenta edge (glow outer layer only) */
+  --color-accent: #6d28d9;
+  --color-accent-edge: #c026d3;
+
+  /* Text */
+  --color-text: #fafafa;
+  --color-text-muted: #a1a1aa;
+
+  /* Type */
+  --font-display: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* The app is always dark. No prefers-color-scheme block: the theme must not
+   follow OS settings. */
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  line-height: 1.7;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+/* GlowCard — the signature surface.
+   The edge is a two-tone bloom: amethyst core fading out into a magenta halo,
+   built from layered low-opacity shadows with zero Y-offset (an edge that
+   surrounds the card, not a drop shadow beneath it). Never a flat shadow.
+
+   Rest and hover glows live on ::before/::after and crossfade via opacity —
+   box-shadow itself is never animated (project law: animate only transform
+   and opacity). Border-color switches instantly on hover. */
+.glow-card {
+  position: relative;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  transition-property: transform;
+  transition-duration: 200ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glow-card::before,
+.glow-card::after {
+  content: "";
+  position: absolute;
+  inset: -1px; /* match the border box so glows align with the card edge */
+  border-radius: inherit;
+  pointer-events: none;
+  transition-property: opacity;
+  transition-duration: 200ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glow-card::before {
+  opacity: 1; /* rest glow */
+}
+
+.glow-card::after {
+  opacity: 0; /* hover glow */
+}
+
+.glow-card:hover {
+  border-color: rgb(109 40 217 / 0.45);
+  transform: translateY(-2px);
+}
+
+.glow-card:hover::before {
+  opacity: 0;
+}
+
+.glow-card:hover::after {
+  opacity: 1;
+}
+
+/* Strong — standalone/hero cards only (e.g. Today). Full 44px bloom; will pool
+   in the gutters if used in a grid. */
+.glow-card-strong::before {
+  box-shadow:
+    inset 0 1px 0 0 rgb(255 255 255 / 0.03),
+    0 0 0 1px rgb(109 40 217 / 0.08),
+    0 0 12px 0 rgb(109 40 217 / 0.14),
+    0 0 28px 2px rgb(109 40 217 / 0.1),
+    0 0 44px 6px rgb(192 38 211 / 0.08);
+}
+
+.glow-card-strong::after {
+  box-shadow:
+    inset 0 1px 0 0 rgb(255 255 255 / 0.04),
+    0 0 0 1px rgb(109 40 217 / 0.18),
+    0 0 16px 0 rgb(109 40 217 / 0.26),
+    0 0 38px 3px rgb(109 40 217 / 0.2),
+    0 0 60px 8px rgb(192 38 211 / 0.16);
+}
+
+/* Soft (default) — grid-safe. Max rest reach 10px (8px blur + 1px spread + 1px
+   ring) stays inside the 8px each card gets at a 16px gutter, so neighbouring
+   glows never meet. Keep the largest rest radius <= 10px or cards will bleed.
+   Hover brightens toward strong without reaching its spread — deliberate in a
+   grid, tight enough not to swallow neighbours. */
+.glow-card-soft::before {
+  box-shadow:
+    inset 0 1px 0 0 rgb(255 255 255 / 0.03),
+    0 0 0 1px rgb(109 40 217 / 0.06),
+    0 0 6px 0 rgb(109 40 217 / 0.08),
+    0 0 10px 1px rgb(192 38 211 / 0.05);
+}
+
+.glow-card-soft::after {
+  box-shadow:
+    inset 0 1px 0 0 rgb(255 255 255 / 0.04),
+    0 0 0 1px rgb(109 40 217 / 0.16),
+    0 0 10px 0 rgb(109 40 217 / 0.22),
+    0 0 18px 2px rgb(192 38 211 / 0.14);
+}
+
+.glow-card:focus-visible {
+  outline: 2px solid var(--color-accent-edge);
+  outline-offset: 2px;
+}
+
+.glow-card:active {
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glow-card {
+    transition-property: none;
+  }
+
+  .glow-card:hover,
+  .glow-card:active {
+    transform: none;
+  }
 }
