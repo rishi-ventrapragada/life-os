@@ -5,27 +5,17 @@ import GlowCard from "@/components/GlowCard";
 import SectionHeader from "@/components/SectionHeader";
 import GoalCard from "@/components/goals/GoalCard";
 import GoalForm from "@/components/goals/GoalForm";
+import { useGoals } from "@/components/goals/useGoals";
 import type { Goal } from "@/components/goals/types";
 
 export default function GoalsSection() {
-  // Local state only this step — persistence arrives in Step 3.
-  const [goals, setGoals] = useState<Goal[]>([]);
+  const { goals, status, error, addGoal, updateGoal, deleteGoal } = useGoals();
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  function addGoal(data: Omit<Goal, "id">) {
-    setGoals((prev) => [...prev, { id: crypto.randomUUID(), ...data }]);
-    setIsAdding(false);
-  }
-
-  function updateGoal(id: string, patch: Partial<Goal>) {
-    setGoals((prev) =>
-      prev.map((g) => (g.id === id ? { ...g, ...patch } : g)),
-    );
-  }
-
-  function deleteGoal(id: string) {
-    setGoals((prev) => prev.filter((g) => g.id !== id));
+  async function handleAdd(data: Omit<Goal, "id">) {
+    // Keep the form open (with its values) if the insert fails.
+    if (await addGoal(data)) setIsAdding(false);
   }
 
   return (
@@ -44,11 +34,21 @@ export default function GoalsSection() {
       </div>
 
       <div className="mt-6 flex flex-col gap-4">
-        {isAdding && (
-          <GoalForm onSave={addGoal} onCancel={() => setIsAdding(false)} />
+        {error && (
+          <p role="alert" className="text-sm text-red-400">
+            {error}
+          </p>
         )}
 
-        {goals.length === 0 && !isAdding ? (
+        {isAdding && (
+          <GoalForm onSave={handleAdd} onCancel={() => setIsAdding(false)} />
+        )}
+
+        {status === "loading" ? (
+          <GlowCard>
+            <p className="text-(--color-text-muted)">Loading your goals…</p>
+          </GlowCard>
+        ) : goals.length === 0 && !isAdding ? (
           <GlowCard>
             <p className="text-(--color-text-muted)">
               No goals yet. Add your first one to start tracking.

@@ -1,6 +1,6 @@
 # SESSION_3.md — Step 3: Wire Goals to Supabase (persistence — the data starts surviving)
 
-## ⏸ RESUME HERE (Increments A + B done, 2026-07-17 — next: Increment C, wire GoalsSection)
+## ⏸ RESUME HERE (Increments A–C done + verified, 2026-07-17 — next: Vercel env vars, push, re-lock MCP)
 
 **Plan approved** (increments A–E, in Claude's plan file). Design decision settled: **anonymous sign-in** bridges the auth gap until Step 5 — `signInAnonymously()` on first load, RLS `auth.uid() = user_id` from birth, anon user converts to the real account at Step 5 with the same user id (no migration).
 
@@ -16,11 +16,13 @@ Increment A complete (2026-07-17): `.env.local` written and verified git-ignored
 Increment B complete (2026-07-17): migration `create_life_areas_and_goals` applied via MCP — `life_areas` + `goals`, both born with `user_id default auth.uid()` (FK → `auth.users` `on delete cascade`), owner-only RLS (4 policies each, `(select auth.uid()) = user_id`, `to authenticated`), `progress_pct` 0–100 check, `unique(user_id, name)` on life_areas for idempotent seeding, FK/user_id indexes. Verified: `list_tables` + pg catalog both show RLS enabled, 4 policies per table.
 - `get_advisors(security)`: exactly 2 WARNs — "Anonymous Access Policies" on both tables. **Accepted**: this flags the anonymous-sign-in design itself (anon users hold the `authenticated` role); owner-only `auth.uid() = user_id` still isolates every user. Revisit at Step 5 (add an `is_anonymous` exclusion once real accounts exist).
 
-**Exact next actions:**
-1. **User action first:** anonymous sign-ins toggle in the Supabase dashboard (Authentication → Sign In / Up) — still not done; blocks all runtime testing of Increment C.
-2. Increment C: `signInAnonymously()` on first load + seed the 5 life_areas (idempotent), wire GoalsSection CRUD (add/edit/delete/slider) to Supabase, mapping UI `area` name ↔ `area_id` via the user's seeded rows; retire local-only state.
-3. Increment D: verify DoD — goal survives hard refresh + visible in Supabase table editor.
-4. Increment E: re-lock `read_only=true` in `.mcp.json` (⚠️ write mode currently ON), reconnect MCP, commit, push, confirm live on Vercel.
+Increment C complete + verified (2026-07-17; re-proven same session with a second fresh anon user — anon `35f971f1…` got 5 seeded areas + a UI-added goal that survived hard refresh, confirmed by DB select). **Deviation from the approved plan's file layout: there is no `lib/goals.ts`** — the data layer landed as `lib/bootstrap.ts` + `components/goals/useGoals.ts` instead (same responsibilities, hook-shaped). Anonymous sign-ins enabled in dashboard (user-verified). New `lib/bootstrap.ts` (session + idempotent 5-area seed, promise-singleton against StrictMode double-mount) and `components/goals/useGoals.ts` (joined fetch via `life_areas!inner(name)` so the UI `Goal.area` name stays rename-free; awaited insert; optimistic update/delete with refetch-on-error; 400ms debounce on slider-only writes). GoalsSection swapped to the hook + loading/error states; local-only state retired.
+- Verified (Increment D's DoD, observed): 11/11 headless-Chrome checks — add/edit/delete/slider each survive a hard refresh; DB read-back confirms the exact row (progress 55, area Fitness after edit, deadline 2026-08-31) and 5 seeded areas for the one anon user; zero console errors; screenshot matches design system.
+
+**Exact next actions (Increment E / close-out):**
+1. **User action:** re-lock `.mcp.json` — append `&read_only=true` to the URL (user chose to edit this file themselves) — then reconnect MCP. SECURITY.md Step 3 item; ⚠️ write mode is ON until this lands.
+2. **User action:** add `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY` in the Vercel dashboard (all environments) — the deployed build throws at load without them (`lib/supabase.ts` fails fast). Do this BEFORE pushing.
+3. Push, confirm the goal flow live at https://life-os-lac-tau.vercel.app/, tick off the step. Then stop — Step 4 (`getTodayIST()`) is the next session.
 
 
 
