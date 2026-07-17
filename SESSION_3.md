@@ -1,6 +1,8 @@
 # SESSION_3.md — Step 3: Wire Goals to Supabase (persistence — the data starts surviving)
 
-## ⏸ RESUME HERE (Increments A–C done + verified, 2026-07-17 — next: Vercel env vars, push, re-lock MCP)
+## ✅ STEP 3 COMPLETE (2026-07-17) — DoD observed live on Vercel; MCP re-locked read_only; next session: Step 4 (`getTodayIST()`)
+
+Close-out evidence: pushed `c2dbf4d`/`395071e`/`f7a3263`; Vercel env vars set (Production + Preview, Sensitive); live proof on https://life-os-lac-tau.vercel.app/ — fresh anon user `94da9d82…` seeded 5 areas, goal added via real UI survived hard refresh, row confirmed by DB select, zero page errors. MCP reconnected under `read_only=true`.
 
 **Plan approved** (increments A–E, in Claude's plan file). Design decision settled: **anonymous sign-in** bridges the auth gap until Step 5 — `signInAnonymously()` on first load, RLS `auth.uid() = user_id` from birth, anon user converts to the real account at Step 5 with the same user id (no migration).
 
