@@ -25,7 +25,7 @@
 
 ## Notes carried over from Step 3
 - **Supabase MCP is locked `read_only=true` and stays that way** — Step 4 touches no schema (no tables, no Supabase calls at all). The re-lock lands with the next step that needs writes, not by default.
-- **Stray anonymous users on prod are accepted until Step 5** (Solo verification runs added 3+ already; each carries 5 seeded `life_areas` rows via the `on delete cascade` FK). Don't share the URL around; Step 5's login gate ends it and they get cleaned from the dashboard then.
+- **Stray anonymous users on prod are accepted until Step 5** (Step 3's verification runs added 3+ already; each carries 5 seeded `life_areas` rows via the `on delete cascade` FK). Don't share the URL around; Step 5's login gate ends it and they get cleaned from the dashboard then.
 - **Step 5 reminder from the advisors:** the two accepted "Anonymous Access Policies" WARNs on `life_areas`/`goals` get revisited at Step 5 (add an `is_anonymous` exclusion once real accounts exist).
 - **`GoalCard.formatDeadline` stays pure string formatting** — deadlines remain display-only until due-date *comparisons* arrive (Today section, Step 9). Step 4 builds the utility those comparisons will use; it does NOT retrofit GoalCard.
 - **A test runner is a new dev dependency** — npm registry only, per SECURITY.md. `npm audit`'s 2 moderate pre-existing findings (Next's bundled postcss) stay parked as the pre-v2 audit item.
