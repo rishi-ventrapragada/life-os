@@ -1,20 +1,26 @@
 # SESSION_3.md — Step 3: Wire Goals to Supabase (persistence — the data starts surviving)
 
-## ⏸ RESUME HERE (paused mid-Increment A, evening of 2026-07-16)
+## ⏸ RESUME HERE (Increments A + B done, 2026-07-17 — next: Increment C, wire GoalsSection)
 
 **Plan approved** (increments A–E, in Claude's plan file). Design decision settled: **anonymous sign-in** bridges the auth gap until Step 5 — `signInAnonymously()` on first load, RLS `auth.uid() = user_id` from birth, anon user converts to the real account at Step 5 with the same user id (no migration).
 
 Done so far (Increment A):
 - `.mcp.json`: `read_only=true` **removed** — ⚠️ **write access is currently ON and must go back on in Increment E** (SECURITY.md Step 3 item). ⚠️ **The MCP server still needs reconnecting** (restart the Claude Code session / reload MCP) for the edit to take effect.
+- MCP re-authorized 2026-07-17 with an **org-wide OAuth grant** (Supabase's standard scope packaging — it doesn't offer narrower grants). Effective protection remains: `project_ref` scoping in the `.mcp.json` URL + per-tool-call approvals + the `read_only` re-lock after schema work.
 - Stray-anon-user pollution note added below (accepted until Step 5).
 - `@supabase/supabase-js` installed from npm. (`npm audit`: 2 moderate pre-existing findings in Next's bundled postcss — parked as the pre-v2 audit item, not related to this step.)
 - Project URL + keys fetched via MCP; using the modern `sb_publishable_…` key (client-safe).
 
+Increment A complete (2026-07-17): `.env.local` written and verified git-ignored (`.gitignore:33` `.env.*`); `lib/supabase.ts` browser-client singleton, env vars only.
+
+Increment B complete (2026-07-17): migration `create_life_areas_and_goals` applied via MCP — `life_areas` + `goals`, both born with `user_id default auth.uid()` (FK → `auth.users` `on delete cascade`), owner-only RLS (4 policies each, `(select auth.uid()) = user_id`, `to authenticated`), `progress_pct` 0–100 check, `unique(user_id, name)` on life_areas for idempotent seeding, FK/user_id indexes. Verified: `list_tables` + pg catalog both show RLS enabled, 4 policies per table.
+- `get_advisors(security)`: exactly 2 WARNs — "Anonymous Access Policies" on both tables. **Accepted**: this flags the anonymous-sign-in design itself (anon users hold the `authenticated` role); owner-only `auth.uid() = user_id` still isolates every user. Revisit at Step 5 (add an `is_anonymous` exclusion once real accounts exist).
+
 **Exact next actions:**
-1. Write `.env.local` with `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY` (publishable key) and verify it's git-ignored (`git status` must not show it).
-2. Create `lib/supabase.ts` (browser client singleton, env vars only) — completes Increment A.
-3. Increment B: one migration via MCP `apply_migration` — `life_areas` + `goals`, both born with `user_id` + RLS owner-only policies; then `get_advisors(security)`.
-4. Also before the user enables anything else: **anonymous sign-ins toggle in the Supabase dashboard** (Authentication → Sign In / Up) — user action, not yet done.
+1. **User action first:** anonymous sign-ins toggle in the Supabase dashboard (Authentication → Sign In / Up) — still not done; blocks all runtime testing of Increment C.
+2. Increment C: `signInAnonymously()` on first load + seed the 5 life_areas (idempotent), wire GoalsSection CRUD (add/edit/delete/slider) to Supabase, mapping UI `area` name ↔ `area_id` via the user's seeded rows; retire local-only state.
+3. Increment D: verify DoD — goal survives hard refresh + visible in Supabase table editor.
+4. Increment E: re-lock `read_only=true` in `.mcp.json` (⚠️ write mode currently ON), reconnect MCP, commit, push, confirm live on Vercel.
 
 
 
