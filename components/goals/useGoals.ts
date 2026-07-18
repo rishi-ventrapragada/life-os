@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { ensureSessionAndAreas } from "@/lib/bootstrap";
+import { ensureAreasSeeded } from "@/lib/bootstrap";
+import { useSession } from "@/components/auth/SessionProvider";
 import type { LifeArea } from "@/lib/lifeAreas";
 import type { Goal } from "@/components/goals/types";
 
@@ -38,8 +39,10 @@ function patchToRow(patch: Partial<Goal>, areaIds: Record<string, string>) {
   return row;
 }
 
-/** Supabase-backed CRUD for the Goals section (anonymous session until Step 5). */
+/** Supabase-backed CRUD for the Goals section, scoped to the signed-in user. */
 export function useGoals() {
+  const { session } = useSession();
+  const userId = session?.user.id;
   const [goals, setGoals] = useState<Goal[]>([]);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [error, setError] = useState<string | null>(null);
@@ -56,10 +59,11 @@ export function useGoals() {
   }, []);
 
   useEffect(() => {
+    if (!userId) return; // the gate guarantees a session; guard defensively
     let cancelled = false;
     (async () => {
       try {
-        const boot = await ensureSessionAndAreas();
+        const boot = await ensureAreasSeeded(userId);
         areaIds.current = boot.areaIdByName;
         await refetch();
         if (!cancelled) setStatus("ready");
@@ -74,7 +78,7 @@ export function useGoals() {
     return () => {
       cancelled = true;
     };
-  }, [refetch]);
+  }, [refetch, userId]);
 
   /** Resync from the database after a failed write so the UI never lies. */
   async function resyncAfterError() {

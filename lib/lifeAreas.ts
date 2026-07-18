@@ -1,6 +1,6 @@
 /**
- * The five fixed life areas. Local constant until Step 5 seeds them into
- * Supabase per-user; Habits and Tasks will reuse this in later steps.
+ * The five fixed life areas. Seeded into Supabase per-user on first login
+ * (see lib/bootstrap.ts); Habits and Tasks will reuse this in later steps.
  */
 export const LIFE_AREAS = [
   "Academics",

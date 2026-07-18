@@ -7,38 +7,38 @@ export type Bootstrap = {
   areaIdByName: Record<string, string>;
 };
 
-let bootstrapPromise: Promise<Bootstrap> | null = null;
+/**
+ * Cached per user id. Two reasons the cache is keyed by user rather than a bare
+ * singleton: React StrictMode double-mounts effects in dev (a bare guard stops
+ * the seed running twice for one login), and a sign-out → sign-in as a
+ * different account in the same page load must NOT hand the new user the
+ * previous user's area ids — a mismatched key rebuilds instead.
+ */
+let cached: { userId: string; promise: Promise<Bootstrap> } | null = null;
 
 /**
- * Session + life-area seed, exactly once per page load. The shared promise
- * matters: React StrictMode double-mounts effects in dev, and two concurrent
- * runs would mint two anonymous users. Anonymous sign-in bridges the auth gap
- * until Step 5's real login (same user id after conversion, no migration).
+ * Idempotent 5-area seed, fired on first real login/sign-up (the login gate
+ * guarantees a session before any caller reaches here — anonymous sign-in was
+ * removed in Step 5). Safe to call on every render; it resolves to the same
+ * promise per user.
  */
-export function ensureSessionAndAreas(): Promise<Bootstrap> {
-  bootstrapPromise ??= doBootstrap().catch((err) => {
-    bootstrapPromise = null; // failed runs don't poison later retries
-    throw err;
-  });
-  return bootstrapPromise;
+export function ensureAreasSeeded(userId: string): Promise<Bootstrap> {
+  if (cached?.userId !== userId) {
+    cached = {
+      userId,
+      promise: doBootstrap(userId).catch((err) => {
+        cached = null; // failed runs don't poison later retries
+        throw err;
+      }),
+    };
+  }
+  return cached.promise;
 }
 
-async function doBootstrap(): Promise<Bootstrap> {
-  const { data: sessionData, error: sessionError } =
-    await supabase.auth.getSession();
-  if (sessionError) throw sessionError;
-
-  let userId = sessionData.session?.user.id;
-  if (!userId) {
-    const { data, error } = await supabase.auth.signInAnonymously();
-    if (error || !data.user) {
-      throw error ?? new Error("Anonymous sign-in returned no user");
-    }
-    userId = data.user.id;
-  }
-
+async function doBootstrap(userId: string): Promise<Bootstrap> {
   // Idempotent: unique(user_id, name) + DO NOTHING makes re-runs no-ops.
-  // user_id is filled by the column default auth.uid().
+  // user_id is filled by the column default auth.uid(), so RLS scopes the
+  // seed to whoever is actually authenticated.
   const { error: seedError } = await supabase.from("life_areas").upsert(
     LIFE_AREAS.map((name, i) => ({ name, sort_order: i })),
     { onConflict: "user_id,name", ignoreDuplicates: true },

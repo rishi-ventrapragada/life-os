@@ -12,6 +12,7 @@ if (!url || !anonKey) {
 /**
  * Browser Supabase client (publishable key only — safe client-side).
  * Import from client components / lib modules; one shared instance so the
- * auth session (anonymous until Step 5) is consistent across the app.
+ * auth session is consistent across the app, on Supabase's default session
+ * handling (localStorage + auto-refresh).
  */
 export const supabase = createClient(url, anonKey);

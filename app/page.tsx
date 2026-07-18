@@ -1,3 +1,5 @@
+import SessionProvider from "@/components/auth/SessionProvider";
+import AuthGate from "@/components/auth/AuthGate";
 import Sidebar from "@/components/Sidebar";
 import TodaySection from "@/components/sections/TodaySection";
 import GoalsSection from "@/components/sections/GoalsSection";
@@ -10,20 +12,24 @@ import PomodoroSection from "@/components/sections/PomodoroSection";
 
 export default function Home() {
   return (
-    <div className="flex flex-1">
-      <Sidebar />
-      <main className="min-w-0 flex-1 px-8 py-16">
-        <div className="mx-auto flex w-full max-w-5xl flex-col gap-24">
-          <TodaySection />
-          <GoalsSection />
-          <HabitsSection />
-          <TasksSection />
-          <AcademicsSection />
-          <FitnessSection />
-          <JournalSection />
-          <PomodoroSection />
+    <SessionProvider>
+      <AuthGate>
+        <div className="flex flex-1">
+          <Sidebar />
+          <main className="min-w-0 flex-1 px-8 py-16">
+            <div className="mx-auto flex w-full max-w-5xl flex-col gap-24">
+              <TodaySection />
+              <GoalsSection />
+              <HabitsSection />
+              <TasksSection />
+              <AcademicsSection />
+              <FitnessSection />
+              <JournalSection />
+              <PomodoroSection />
+            </div>
+          </main>
         </div>
-      </main>
-    </div>
+      </AuthGate>
+    </SessionProvider>
   );
 }
