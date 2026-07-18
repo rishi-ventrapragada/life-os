@@ -44,3 +44,44 @@
 - Claude self-verifies with headless Chrome + `playwright-core` in its scratchpad (worked through Steps 2–3) — but this step's core evidence is behavioral: actually signing in as two real accounts and watching cross-account reads/writes get rejected, plus the `get_advisors(security)` output.
 
 **After DoD passes: stop. Step 6 (Tasks/To-do section — repeat the CRUD + persistence pattern solo, now behind real auth) is the next session's quest.**
+
+---
+
+## Session progress — RESUME AT INCREMENT C (updated 2026-07-18)
+
+Stopped deliberately **before** the Increment C "uninterrupted block" because the session meter was high (~83%). A sequencing-sensitive, security-critical block (convert/provision → verify → purge) must run start-to-finish on a fresh session, not a nearly-exhausted one. Increment C is the **first action** of the next session.
+
+**Plan decisions locked with the owner this session:**
+- **No `updateUser` anon→real conversion** — the anon data is throwaway; owner signs up fresh, all 5 anon users get purged.
+- **Email confirmation stays ON**, owner uses real inboxes.
+- **Adversarial RLS uses two throwaway test accounts** (script-created, strong-random passwords, both deleted in cleanup). Owner's real everyday account is created fresh on Vercel in Increment E.
+- **Auth approach:** client-side gate (matches the all-client architecture; RLS is the real boundary). Full approved plan: `~/.claude/plans/cryptic-watching-meadow.md`.
+
+### Done + pushed
+- **Increment A — login gate + auth UI.** New `components/auth/SessionProvider.tsx` (session context on Supabase defaults; treats any stale `is_anonymous` session as logged-out and signs it out), `AuthGate.tsx` (loading→spinner; unauth/anon→LoginForm only, no sidebar; authed→app), `LoginForm.tsx` (email/password via `signInWithPassword`/`signUp`; Supabase error + rate-limit messages surfaced verbatim, no bypass). Wired in `app/page.tsx`; `Sidebar.tsx` gained account email + Sign out. **Verified** via headless Chrome: logged-out renders login only (no sidebar/sections, 0 console errors); both sign-in/sign-up modes render.
+- **Increment B — seed-on-first-login.** `lib/bootstrap.ts`: removed `signInAnonymously()`; `ensureSessionAndAreas` → `ensureAreasSeeded(userId)`, idempotent 5-area seed now fires on first real login, cache **keyed per user id** (a sign-out→sign-in-as-another in one page load can't leak area ids). `useGoals.ts` passes `session.user.id` + re-runs on user change. Stale comments tidied in `supabase.ts`/`lifeAreas.ts`. typecheck + lint + vitest (9/9) all green.
+- Commit `6258fe7` (A+B) + this doc update, pushed → Vercel auto-deploys the gate. **Live site now shows the login screen only** (the verified state; the logged-in path is verified in C/E, and no real accounts exist yet). MCP stays `read_only=true` (no migration yet).
+
+### DB ground truth captured this session (MCP, read-only)
+- **5 anonymous users, 0 permanent**; each anon user carries the 5 seeded `life_areas` = **25 stray rows** to purge.
+- RLS already correct: per-command owner-only `(select auth.uid()) = user_id` on the `authenticated` role for `life_areas` + `goals` (only these two tables carry RLS).
+- `get_advisors(security)` WARNs: the two "Anonymous Access Policies" (lint `0012_auth_allow_anonymous_sign_ins`) on both tables **plus a third found — "Leaked Password Protection Disabled"** (folded into C pre-flight).
+
+### RESUME — Increment C. Two things needed from owner at C start:
+1. **Pre-flight confirmed:** Leaked Password Protection enabled (Supabase → Authentication → Policies / Password settings). It checks passwords at signup, so enable it before the signups below.
+2. **Two real email addresses** you control for test accounts A + B (throwaway / plus-addressed fine — just need clickable confirm links).
+
+**The 6-step uninterrupted sequence:**
+1. Claude runs `node rls-test.mjs signup <emailA> <emailB>` → two confirmation emails sent.
+2. Owner clicks **BOTH** confirm links → says "confirmed."
+3. Claude runs `node rls-test.mjs attack` → signs in as both, seeds each (5 areas + marker goal `SECRET-A`/`SECRET-B`), runs the **8-attack matrix ×2 directions** (16 total): read / update / delete the other's goal+area (expect 0 rows, no error — RLS `USING` filters silently) and insert a goal+area *as the other user* (expect error `new row violates row-level security policy` — RLS `WITH CHECK`), then an owner-side integrity re-read. Expected: all 16 blocked, data intact.
+4. Claude confirms ground truth via MCP (targeted rows unchanged).
+5. Owner in dashboard: **disable anonymous sign-ins** + **delete the 5 anon users** (their 25 `life_areas` rows cascade-delete via FK).
+6. Claude confirms via MCP: only the 2 test accounts remain, their rows survived the purge.
+
+Then **Increment D** — re-run `get_advisors(security)`; expect the two anon WARNs cleared by disabling anon sign-ins (verify, don't assume; the lint is gated on that provider). Fallback only if they persist: add `AND (auth.jwt() ->> 'is_anonymous')::boolean IS NOT TRUE` to the SELECT/UPDATE/DELETE policies via `apply_migration` — needs the `.mcp.json` read_only toggle dance (owner removes `&read_only=true` + reconnects → Claude applies → owner re-adds + reconnects). Confirm leaked-pw WARN cleared too.
+
+Then **Increment E** — secret-scan staged diff; final commit + push; owner confirms gate + goal isolation live on Vercel; **delete/rotate BOTH throwaway test accounts** and record that cleanup (+ their emails) here in the log.
+
+### Adversarial script (scratchpad, NOT committed — recreate if gone)
+Two-phase `rls-test.mjs`, ~140 lines, in this session's scratchpad (`...\311e9b6f-...\scratchpad\`, ephemeral). Reads `c:\dev\Personal Life OS\.env.local` for `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY`; throwaway creds in `.rls-creds.json` (scratchpad — git-ignored by location); strong-random passwords via `crypto.randomBytes`; clients use `{ auth: { persistSession:false, autoRefreshToken:false } }`. Commands: `signup <emailA> <emailB>` then `attack`. Uses the **anon key + real user JWTs** so RLS actually applies (MCP is only for ground-truth confirmation — it bypasses RLS, so it is never used to *test* RLS). If the scratchpad is gone next session, recreate from this spec + the approved plan.
