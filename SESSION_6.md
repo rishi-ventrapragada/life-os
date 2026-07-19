@@ -1,0 +1,43 @@
+# SESSION_6.md — Step 6: Tasks section — CRUD + persistence behind real auth (repeat the vertical-slice pattern, now with a login)
+
+**Goal:** build the Tasks section as a full vertical slice — a new `tasks` table (born with `user_id` + owner-only RLS in the same DDL) plus its UI and Supabase wiring — reusing the exact data-layer + design patterns proven in Goals (Step 3) and now gated behind the real auth from Step 5. Fields per PRD §4: title, life area, due date, priority (Low/Med/High), status (Not started / In progress / Done). Filterable by status.
+**Done when (from PRD §8):** task CRUD (add/edit/delete) persists across a hard refresh, the status filter works, and every table with RLS survives an adversarial two-account cross-read/write test. Verified by *actually using the deployed app* (create → refresh → still there; filter narrows correctly) and the adversarial RLS run, then committed, pushed, and confirmed live on Vercel.
+
+## Kickoff prompt (paste as first message)
+
+> New session. Read CLAUDE.md, PRD.md, SECURITY.md, and SESSION_6.md fully. We are on **Step 6 of the PRD build plan: the Tasks / To-do section — CRUD + persistence, now behind real auth.**
+> Enter plan mode and propose the plan for:
+> - **`tasks` table via one migration, born with `user_id` + owner-only RLS in the same DDL** (Architecture Law 4 + SECURITY.md Step 3 item — RLS is part of the CREATE, never a follow-up). Mirror the `goals` table exactly: `id uuid pk default gen_random_uuid()`, `user_id uuid default auth.uid()` FK→`auth.users`, `area_id uuid` FK→`life_areas`, `title text not null`, `due_date date null`, `priority text` + CHECK `('Low','Med','High')`, `status text default 'Not started'` + CHECK `('Not started','In progress','Done')`, `created_at timestamptz default now()`; and the four per-command policies `tasks_{select,insert,update,delete}_own` on role `authenticated` with `(select auth.uid()) = user_id` (USING for select/update/delete, WITH CHECK for insert/update). Applying this **requires the MCP lock dance** (MCP is `read_only=true` now): I remove `&read_only=true` from `.mcp.json` + reconnect MCP → you `apply_migration` → I re-append it + reconnect (SECURITY.md Step 3: MCP returns to read-only after schema work).
+> - **Re-run the adversarial RLS checklist against the new `tasks` table** — promised in Step 5's close-out; every new RLS table re-runs it when born. Use the **two-throwaway-accounts pattern from SESSION_5** as the template (script signs up two real confirmed accounts with strong-random passwords via the anon key + real JWTs; attempt cross-account read *and* write on `tasks`; every attempt must fail; confirm ground truth via MCP, which bypasses RLS; delete both test accounts after). Space out signups — Supabase free-tier email is rate-limited (a few/hour).
+> - **Due dates as plain `yyyy-mm-dd`, compared through `getTodayIST()`** (Architecture Law 3) — the date input stores the string as-is; any "due today / overdue" logic compares against `getTodayIST()` from `lib/dates.ts`. No raw `new Date()` date math, no UTC dates, no custom clocks.
+> - **Reuse the established data-layer + design patterns:** a `useTasks()` hook shaped like `components/goals/useGoals.ts` (awaits `ensureAreasSeeded(userId)` from `lib/bootstrap.ts` for `areaIdByName`, optimistic writes with resync-on-error, `useSession()` for the user id) and `components/tasks/{types,TaskCard,TaskForm}.tsx` mirroring the `goals/` folder; fill the existing `components/sections/TasksSection.tsx` stub. Task cards use the **`GlowCard` soft variant** (grid-safe). Status filter is client-side over the fetched rows. Keep every component under ~200 lines (Law 1).
+> - **Advisors check after the migration:** re-run `get_advisors(security)` once `tasks` exists + RLS is on; confirm no new WARN (expect clean — the anon-access lint is resolved and anon sign-ins are disabled). Don't assume; read the output.
+> Work in small increments (schema+RLS → adversarial re-test → UI+wiring → filter → verify live). End of session: commit, push, and I'll confirm task CRUD + persistence + status filter live on Vercel.
+
+## Before starting (2 min)
+- [ ] Open VS Code at `C:\dev\Personal Life OS` (not the old OneDrive path).
+- [ ] **My real owner account:** if I haven't already, sign up on the live site (https://life-os-lac-tau.vercel.app/) with my everyday email + click the confirm link. **Claude: verify via MCP that my account exists (is_anonymous=false, confirmed) and auto-seeded its 5 `life_areas` *before* building on it** — Step 5 left the DB at 0 users because the email rate limit blocked the real signup.
+- [ ] Have the Supabase dashboard open (table editor, Auth → Users) and the Vercel URL handy.
+- [ ] Step 6 is **not** on the fable-mode list (it's the "repeat the pattern solo" consolidation step) — but the **migration + adversarial RLS re-test are the security-critical parts**; slow down there, and invoke fable-mode if any debugging fails twice.
+- [ ] Know the MCP lock dance is coming (migration needs write access): I edit `.mcp.json` to drop `&read_only=true`, reconnect; Claude migrates; I re-append it, reconnect.
+
+## Session rules (unchanged)
+- One step only. New ideas → FUTURE.md.
+- Approve read-only commands quickly; read write/install commands fully.
+- Two failed fixes = wrong diagnosis → invoke fable-mode.
+- Never end the session without commit + push.
+
+## Notes carried over from Step 5 (login gate is live)
+- **My real owner account is NOT created yet.** Step 5's DoD was verified live using two throwaway test accounts (both since deleted); the email rate limit blocked creating my real account, so the DB is currently **0 users, 0 rows**. I'll sign up on the live site before or at the start of this session; the first thing to do is **verify my account exists + is seeded** (see Before starting) before wiring Tasks to it.
+- **MCP is `read_only=true` right now** (`.mcp.json`). The `tasks` migration is the only write this step needs → do the lock dance, then re-lock immediately after (SECURITY.md Step 3). All the RLS *testing* uses the anon key + real JWTs via the throwaway-accounts script, not MCP writes.
+- **Adversarial RLS is a per-table gate.** After Step 5, RLS-carrying tables are `life_areas` + `goals` (both proven). `tasks` is the **third** — it re-runs the same two-account cross-read/write checklist the moment it's born. Reuse the `rls-test.mjs` two-phase pattern from SESSION_5 (`signup <emailA> <emailB>` → confirm links → `attack`), extended to hit `tasks`; delete both test accounts in cleanup.
+- **`goals` is the working template** for the whole slice: table shape + the four per-command `(select auth.uid()) = user_id` policies on `authenticated`; the `components/goals/` folder (`types.ts`, `GoalCard.tsx`, `GoalForm.tsx`, `useGoals.ts`) + `GoalsSection.tsx`; optimistic writes with resync-on-error; `GlowCard` soft variant for grid cards; the accent-button / field-input class strings. Copy the shape, swap the fields.
+- **Date law (Law 3):** `getTodayIST()` exists in `lib/dates.ts` (Step 4, vitest edge tests in `lib/dates.test.ts`, `npm test`). Due dates are stored as the raw `yyyy-mm-dd` string from the date input; any due-today/overdue comparison goes through `getTodayIST()`. No raw `Date` date-strings, no UTC.
+- **Auth is in place** (Step 5): `components/auth/SessionProvider.tsx` (`useSession()` → `{ session, status }`; rejects stale anon sessions), `AuthGate.tsx` (logged-out → login only), `LoginForm.tsx`. `useTasks()` gets the user id from `useSession()` and only runs inside the gate, exactly like `useGoals()`.
+- **Parked, accepted for v1 (do not re-chase this step):**
+  - **Leaked Password Protection** — Pro-plan-gated on this free-tier project, so its security-advisor WARN can't be cleared. Accepted for v1; revisit only if the project upgrades to Pro.
+  - **`npm audit`** — two moderate findings (Next's bundled postcss) remain parked as the pre-v2 audit item.
+- **Env/deploy unchanged:** `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY` set in Vercel (all envs); anon/publishable key is client-safe; service-role key never ships to the client. Push to `main` auto-deploys.
+- **Windows gotchas:** kill node via PowerShell (`Get-Process node | Stop-Process -Force`), not bash `pkill`; stop the dev server before `npm run build` (shared `.next`); self-verify UI with headless installed Chrome + scratchpad `playwright-core`. The **behavioral** DoD evidence (create → hard refresh → persists; status filter narrows; adversarial RLS rejections) is what counts, not "should work."
+
+**After DoD passes: stop. Step 7 (Habits: CRUD + daily checkbox + `habit_checks` — back on the fable-mode list) is the next session's quest.**
