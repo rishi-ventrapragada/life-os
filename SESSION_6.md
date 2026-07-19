@@ -40,4 +40,10 @@
 - **Env/deploy unchanged:** `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY` set in Vercel (all envs); anon/publishable key is client-safe; service-role key never ships to the client. Push to `main` auto-deploys.
 - **Windows gotchas:** kill node via PowerShell (`Get-Process node | Stop-Process -Force`), not bash `pkill`; stop the dev server before `npm run build` (shared `.next`); self-verify UI with headless installed Chrome + scratchpad `playwright-core`. The **behavioral** DoD evidence (create → hard refresh → persists; status filter narrows; adversarial RLS rejections) is what counts, not "should work."
 
+## Step 6 — COMPLETE (2026-07-20)
+- **Schema + RLS:** migration `20260719145548 create_tasks` — `tasks` born with `user_id default auth.uid()` (FK→auth.users), `area_id` (FK→life_areas), priority/status CHECKs, `rls_enabled=true`, and the four per-command `(select auth.uid()) = user_id` policies on `authenticated` (select/insert/update/delete). Security advisor clean (only the accepted Pro-gated leaked-password WARN).
+- **Adversarial RLS re-test (Increment B):** two throwaway accounts (`+rlsA`/`+rlsB`) via anon key + real JWTs. A inserted a task; **B's SELECT / UPDATE / DELETE all returned 0 rows; A's task intact → ALL PASS.** MCP ground truth confirmed the probe task's owner = A, title unchanged, B owned nothing. Both throwaways + their rows deleted (children before `auth.users`, FK-no-cascade); DB back to 1 real user / 5 life_areas / 3 goals / 0 tasks, zero orphans.
+- **Behavioral DoD (Increment C):** verified locally (create → hard refresh → persists; edit/delete persist; status filter narrows; IST due-date badges correct). Live confirmation on Vercel after this push.
+- **Note:** the localhost hydration console warning is from the Grammarly browser extension (`data-gr-ext-installed` injected into `<body>` post-render), not app code — reproduces on any React site with Grammarly, not fixed.
+
 **After DoD passes: stop. Step 7 (Habits: CRUD + daily checkbox + `habit_checks` — back on the fable-mode list) is the next session's quest.**

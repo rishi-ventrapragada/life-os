@@ -33,6 +33,9 @@ yarn-error.log*
 .env.*
 !.env.example
 
+# throwaway RLS adversarial test scripts (contain no secrets, but never shipped)
+/scripts/rls-test.mjs
+
 # vercel
 .vercel
 
