@@ -85,3 +85,30 @@ Then **Increment E** — secret-scan staged diff; final commit + push; owner con
 
 ### Adversarial script (scratchpad, NOT committed — recreate if gone)
 Two-phase `rls-test.mjs`, ~140 lines, in this session's scratchpad (`...\311e9b6f-...\scratchpad\`, ephemeral). Reads `c:\dev\Personal Life OS\.env.local` for `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY`; throwaway creds in `.rls-creds.json` (scratchpad — git-ignored by location); strong-random passwords via `crypto.randomBytes`; clients use `{ auth: { persistSession:false, autoRefreshToken:false } }`. Commands: `signup <emailA> <emailB>` then `attack`. Uses the **anon key + real user JWTs** so RLS actually applies (MCP is only for ground-truth confirmation — it bypasses RLS, so it is never used to *test* RLS). If the scratchpad is gone next session, recreate from this spec + the approved plan.
+
+---
+
+## STEP 5 — COMPLETE ✅ (2026-07-19)
+
+Full DoD met and **verified live on Vercel**. This supersedes the "RESUME AT INCREMENT C" section above — all increments (A–E) are done.
+
+### Verified (observed, not assumed)
+- **Logged-out gate, live on prod:** login screen only — no sidebar/sections. (Owner screenshot + headless check `loggedOutShowedLoginOnly:true`.)
+- **Authed app, live on prod:** signed in as a real confirmed account → sidebar (account email + Sign out) + all sections render; Goals loads under real auth and shows the account's goal with its life-area pill resolved; **0 console errors**. Confirms Increment A's authed branch + Increment B's seed-on-first-login wiring end-to-end in production.
+- **Adversarial RLS (two real confirmed accounts, `life_areas` + `goals`):** **16/16 cross-account attempts blocked**, both directions — reads 0 rows, updates/deletes 0 rows, cross-owner inserts raise `new row violates row-level security policy`; owner-side integrity re-read + MCP ground truth confirmed nothing mutated and zero `HACKED`/`planted` contamination.
+- **Rate-limit aware:** Supabase's `email rate limit exceeded` surfaced verbatim in the login form on a 3rd signup — no bypass, as required.
+- **Supabase Auth only** (no hand-rolled hashing/storage/reset); **session on Supabase defaults**.
+
+### Increment D — advisor WARNs
+- The two **"Anonymous Access Policies"** WARNs (lint `0012_auth_allow_anonymous_sign_ins`) **cleared** by disabling anonymous sign-ins. **No policy migration was needed; MCP stayed `read_only=true` the entire step.**
+- **"Leaked Password Protection"** WARN **parked** — the toggle is **Pro-plan-gated** on this free-tier project, so it cannot be enabled. Accepted for v1 (same bucket as the pre-v2 `npm audit` items); revisit if the project upgrades to Pro.
+
+### Cleanup / final state
+- Anonymous sign-ins **disabled**; the 5 stray anon users **purged** (25 `life_areas` cascaded out, 0 orphans).
+- Both throwaway RLS test accounts **deleted**: `rishiventrapragada23+rlstest-a@gmail.com`, `rishiventrapragada23+rlstest-b@gmail.com`.
+- **Final DB state: 0 users, 0 life_areas, 0 goals** — clean slate behind the live gate.
+- Scratchpad artifacts (`rls-test.mjs`, `.rls-creds.json`, verify scripts) never entered the repo.
+
+### Next (not part of the build)
+- Owner signs up their **real everyday account** on the live site once the email rate limit resets (~1h); it auto-seeds the 5 areas via the same verified path.
+- **Step 6** (Tasks/To-do section — CRUD + persistence, now behind real auth) is the next session's quest.
