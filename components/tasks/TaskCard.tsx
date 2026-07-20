@@ -1,5 +1,6 @@
 import GlowCard from "@/components/GlowCard";
 import { getTodayIST } from "@/lib/dates";
+import { dueLabel } from "@/lib/due";
 import type { Task, Priority } from "@/components/tasks/types";
 
 type TaskCardProps = {
@@ -19,18 +20,6 @@ function formatDate(iso: string): string {
   return `${Number(d)} ${MONTHS[Number(m) - 1] ?? "?"} ${y}`;
 }
 
-/**
- * Compare the stored "yyyy-mm-dd" string to getTodayIST() (Architecture Law 3).
- * ISO date strings sort lexicographically, so a plain string compare is correct
- * — no new Date() math.
- */
-function dueLabel(dueDate: string): "Overdue" | "Due today" | null {
-  const today = getTodayIST();
-  if (dueDate < today) return "Overdue";
-  if (dueDate === today) return "Due today";
-  return null;
-}
-
 const PRIORITY_CLASS: Record<Priority, string> = {
   Low: "border-(--color-border) text-(--color-text-muted)",
   Med: "border-amber-500/40 text-amber-300",
@@ -38,7 +27,7 @@ const PRIORITY_CLASS: Record<Priority, string> = {
 };
 
 export default function TaskCard({ task, onEdit, onDelete }: TaskCardProps) {
-  const label = task.dueDate ? dueLabel(task.dueDate) : null;
+  const label = task.dueDate ? dueLabel(task.dueDate, getTodayIST()) : null;
 
   return (
     <GlowCard className="flex flex-col gap-4">
