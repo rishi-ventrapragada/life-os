@@ -105,3 +105,13 @@ S-rank. Once v1's manual tracking is a stable habit:
   same bootstrap-await + optimistic-write + `resyncAfterError` shape. Triplication is
   accepted for v1 pedagogy (AUDIT_1 §3); consider a shared factory only post-v1, and
   only if a fourth copy appears.
+- **Lift habits/tasks state into a provider (Step 9 decision F).** `TodaySection` mounts
+  its own `useHabits()`/`useTasks()` instances alongside `HabitsSection`/`TasksSection`,
+  so the page fetches each dataset twice and — the part that actually shows — **the two
+  copies hold independent state: checking a habit in Today does not visibly update the
+  Habits section until a refresh** (and vice versa). Accepted for v1: a single user, two
+  small extra queries, and the alternative was refactoring three working slices mid-step.
+  **The fix when it bites:** wrap the page in `HabitsProvider`/`TasksProvider` (or lift
+  the hooks into a shared context in `app/page.tsx`) so every section reads one instance.
+  **Trigger to do it:** the stale-until-refresh behaviour becoming annoying in daily use,
+  or a fourth consumer of either hook appearing.
