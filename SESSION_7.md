@@ -55,4 +55,38 @@
 - **Env/deploy unchanged:** `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY` set in Vercel (all envs); anon/publishable key is client-safe; service-role key never ships to the client. Push to `main` auto-deploys.
 - **Windows gotchas** ([[windows-dev-loop-gotchas]]): kill node via PowerShell (`Get-Process node | Stop-Process -Force`), not bash `pkill`; stop the dev server before `npm run build` (shared `.next`); self-verify UI with headless installed Chrome + scratchpad `playwright-core`. The **localhost React hydration warning is the Grammarly extension**, not app code ([[grammarly-hydration-warning-not-ours]]) — don't "fix" it. The **behavioral** DoD evidence (check today → hard refresh → still checked; uncheck → persists; re-check doesn't duplicate; adversarial RLS rejections) is what counts, not "should work."
 
+## Locked decisions (2026-07-20, mid-Step-7) — RESUME HERE
+
+Increment 1 shipped migration `20260720122754 create_habits_and_habit_checks` (both tables, 8 policies, unique constraint, indexes) and `20260720122759 harden_tasks_user_id_and_indexes` (`tasks.user_id` NOT NULL + the two missing indexes). Reviewing that schema surfaced two locked decisions.
+
+### Decision A — `habit_checks` INSERT must verify HABIT OWNERSHIP, not just `user_id`
+
+**The shipped policy is the weak form.** Read back from `pg_policies` this session:
+
+```
+habit_checks_insert_own | INSERT | with_check: (( SELECT auth.uid() AS uid) = user_id)
+```
+
+No `EXISTS` on `habits`. **The hole:** an attacker who knows a victim's `habit_id` inserts `(victim_habit_id, today)` stamped with their **own** `user_id` — which satisfies `user_id = auth.uid()`. Combined with `unique (habit_id, check_date)`, that row occupies the victim's slot for that habit/day, so the owner's own check insert fails with 23505. The victim can't SELECT or DELETE the row (their policies scope to their own `user_id`) — an invisible, unfixable-from-the-app **denial of service on their own habit**.
+
+**The fix:** the INSERT `WITH CHECK` must confirm **both** `user_id = auth.uid()` **and** that the referenced habit belongs to `auth.uid()`, via `EXISTS (SELECT 1 FROM habits h WHERE h.id = habit_checks.habit_id AND h.user_id = auth.uid())`. Keep `unique (habit_id, check_date)` as-is.
+
+*Honest scoping:* exploiting it needs a victim's `habit_id` UUID, which RLS never hands out — with one real user the practical risk today is ~zero. It matters because v2 opens registration (PRD §2); the policy must be correct regardless of the current user count.
+
+**Generalized into law:** SECURITY.md "Step 3 — database" now carries the rule — *child-table INSERT policies must verify parent-row ownership via `EXISTS` on the parent, not merely `user_id = auth.uid()`.* Applies to every future child table (`assignments`→`courses`, `workout_logs`, etc.).
+
+### Decision B — archive is a column: `archived_at timestamptz NULL`
+
+`archived_at` replaces the `is_archived boolean` that Increment 1 shipped (and that PRD §6 specified). **NULL = active; a timestamp = archived**, preserving *when*. Every "active habits" query filters `archived_at IS NULL`. Archiving removes a habit from today's checklist but **must NOT delete its `habit_checks`** — Step 8 streaks need that history. `habits` had 0 rows when this was decided, so the column swap carried no data risk. PRD §6 line corrected to match.
+
+### Pending migration — the RLS matrix must prove the FINAL policy
+
+`harden_habit_checks_insert_and_archive_column` (Decision A policy replacement + Decision B column swap) is **pending** and must land in a proper MCP unlock window **before** the adversarial RLS matrix runs. The matrix must never certify a stale policy.
+
+**The S1 matrix gains a new required case:** an attacker inserting a `habit_checks` row that references a habit they do **not** own, stamped with their **own** honest `user_id`, must be **REJECTED**. Under the old policy this would have *succeeded* — this case is exactly what proves Decision A landed.
+
+### MCP lock-dance note (learned the hard way this session)
+
+Two `/mcp` reconnects failed to rebind the session to the read-only URL — the file on disk was correct while the live session stayed write-capable. Only a **full VS Code window reload** (extension-host restart) re-read `.mcp.json`. Also: **never test the lock with a write probe.** Two probes ran before this was settled; the second left a junk migration row `20260720123536 readonly_lock_verification_expect_rejection` in `supabase_migrations.schema_migrations` (owner removes it in the dashboard — migration-bookkeeping writes don't go through Claude). Read-only status isn't observable from the tool list (`apply_migration` is advertised either way; `read_only` is enforced server-side at call time), so after a reload the lock is **user-asserted**, not verified.
+
 **After DoD passes: stop. Step 8 (Habit streaks + monthly grid — computed from the `habit_checks` rows this step creates) is the next session's quest.**

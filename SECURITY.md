@@ -28,6 +28,10 @@ observed, not assumed.
       their own rows.
 - [ ] **No table ever goes live without RLS — including "temporary" ones.** There
       are no exceptions and no "just for now" tables.
+- [ ] **Child-table INSERT policies must verify parent-row ownership** (via `EXISTS`
+      on the parent), not merely `user_id = auth.uid()`. A child row that points at
+      someone else's parent is an attack even when its own `user_id` is honest —
+      with a `unique` constraint it silently denies the real owner their row.
 - [ ] **Supabase MCP returns to `read_only=true` after schema work is done.** Write
       access is enabled only for the duration of a step that needs it, then
       re-locked.

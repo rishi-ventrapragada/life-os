@@ -73,7 +73,7 @@ Gamification/XP/ranks/rewards · Finance tracker module · Calendar month-view �
 ### Data model (draft — Claude Code refines via Supabase MCP)
 - `life_areas` (id, user_id, name, sort_order)
 - `goals` (id, user_id, area_id, title, progress_pct, deadline?, created_at)
-- `habits` (id, user_id, area_id, name, is_archived, created_at)
+- `habits` (id, user_id, area_id, name, archived_at, created_at)
 - `habit_checks` (id, user_id, habit_id, check_date /*IST date*/) — unique (habit_id, check_date); streaks computed from rows
 - `tasks` (id, user_id, area_id, title, due_date?, priority, status)
 - `courses` (id, user_id, name, next_exam_date?) · `assignments` (id, user_id, course_id, title, due_date, status)
@@ -104,7 +104,7 @@ Never start step N+1 with step N's Done list unchecked.
 | 4 | `getTodayIST()` utility + tests around midnight edge cases | Utility returns correct IST date; edge tests pass |
 | 5 | Auth: Supabase email/password login; RLS on `life_areas` + `goals`; seed 5 life areas on first login | Logged-out users see login only; two test accounts can't see each other's goals |
 | 6 | To-do/Tasks section (repeat the CRUD+persistence pattern solo) | Task CRUD persists; filter by status works |
-| 7 | Habits: CRUD + daily checkbox + `habit_checks` | Checking today creates one row; unchecking removes it; unique per day |
+| 7 | Habits: CRUD + daily checkbox + `habit_checks` | Checking today creates one row; unchecking removes it; unique per day; `habit_checks` INSERT policy verifies habit ownership (`EXISTS` on `habits`), not just `user_id`; habits archive via `archived_at` (NULL = active) with every active query filtering `archived_at IS NULL` and archiving never deleting checks; adversarial RLS matrix passes both directions on both tables including cross-owner INSERT and the foreign-habit check-insert |
 | 8 | Habit streaks + monthly grid | Streak/max streak correct across gaps and month edges; grid renders current month |
 | 9 | **Today section** (assembles habits due + tasks due/overdue + journal quick-line + week indicator) | Full daily check-in possible without leaving the section |
 | 10 | Journal + Pomodoro | One entry per IST day, editable; timer runs 25/5 accurately |
