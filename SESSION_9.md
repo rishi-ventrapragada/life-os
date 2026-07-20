@@ -51,4 +51,29 @@
 - **Windows gotchas** ([[windows-dev-loop-gotchas]]): kill node via PowerShell (`Get-Process node | Stop-Process -Force`), not bash `pkill`; stop the dev server before `npm run build` (shared `.next`). The localhost React hydration warning is the **Grammarly extension**, not app code ([[grammarly-hydration-warning-not-ours]]) — don't "fix" it.
 - **Verification bar (what Step 8 proved works):** predict the expected result *before* looking at the UI, then check the real rows via MCP and compare. "It renders" is not evidence that the numbers are right.
 
-**After DoD passes: stop. Step 10 (Journal + Pomodoro) is the next session's quest — and the PRD's planned usage pause after Step 10 (live with the app 1–2 weeks before Steps 11–12) starts there.**
+## Step 9 — COMPLETE (2026-07-20) · commits `d0cec73`, `5fdd83e`, `a4c79e8`
+
+**Decisions locked this session** (asked before building, not discovered after):
+- **J — `journal_entries` created here, as a full vertical slice.** Verified via MCP first that it genuinely didn't exist (5 tables, no journal). It's Step 10's table anyway, and building it now is what let Today's DoD — *a full check-in without leaving the section* — be honestly met instead of shipping PRD §4.1 minus one element. **Step 10 therefore shrinks to the journal LIST view + Pomodoro.**
+- **F — accept the double-fetch for v1.** Today mounts its own `useHabits()`/`useTasks()` instances. Known consequence, stated not hidden: the sections hold independent state, so a habit checked in Today doesn't visibly update the Habits section until refresh. Recorded in FUTURE.md with the concrete fix (lift into a provider) and the trigger for doing it.
+- **W — week progress = trailing 7 days**, `checks ÷ (habits × 7)`. A trailing window is always full, so it never looks artificially bad on a Monday the way a Mon–Sun calendar week would.
+
+**Migration `20260720180647 create_journal_entries`** — the **6th RLS table**, born correct per Law 4 with RLS in the same DDL. Verified by read-back, not by the success flag: 4/4 policies on `authenticated` matching the template, `user_id` NOT NULL, `unique (user_id, entry_date)`, 3 indexes, `relrowsecurity = true`, advisors clean apart from the accepted Pro-gated leaked-password WARN.
+
+**S1 RLS gate — PASSED 32/32** on `habits` + `habit_checks` + `journal_entries`, both directions. The journal cross-owner INSERT was rejected with **42501 in both directions**. That distinction was the point: because `journal_entries` carries `unique(user_id, entry_date)` and both throwaways had written today's entry, a **23505 was coded as a FAIL** — a duplicate error would have meant RLS *accepted* the forced row and only the constraint caught it. Same trap Decision A exposed in Step 7. MCP ground truth confirmed **0 attacker rows** landed. Throwaways `+rlsC`/`+rlsD` cleaned up afterwards; DB back to 1 user / 5 areas / 1 habit / 9 checks.
+
+**Shared, not copied:** `dueLabel` was lifted out of `TaskCard` (where it was module-private) into **`lib/due.ts`**, now taking `today` as a parameter so it's pure and testable. Today and Tasks share one implementation and cannot disagree about what "overdue" means. **`lib/week.ts`** holds the week maths — pure, in `lib/`, never in a component.
+
+**Law 1 handled by splitting up front, not refactoring after:** `components/today/` = `TodayDate` 21, `WeekProgress` 48, `TodayHabits` 70, `TodayTasks` 79, `useJournalToday` 95, composed by a 92-line `TodaySection` keeping the `strong` GlowCard hero variant. `useHabits.ts` was not touched (still 185).
+
+**Verification actually performed:**
+- **77/77 vitest** (34 dates + 16 streaks + 3 streak-realdata + 11 due + 10 week + 3 week-realdata); `npm run build` clean; deployed bundle scanned for all six Step 9 markers **and** for service-role/secret-shaped strings (clean).
+- **Predict-then-check, twice.** Week progress was predicted at **4/7 = 57%** from the real rows before any UI existed, then confirmed. The due-list contents were predicted per-task by due date (`test` → Overdue, `record vid` → Due today, `CM LAB` → absent) before the owner looked.
+- **A wrong prediction, caught and recorded:** my first draft of `week.realdata.test.ts` asserted the score would drop to 3/7 on 2026-07-21. It doesn't — only the 14th leaves that window, so 17/18/19/20 all remain at 4/7. **The function was right and my expectation was wrong; the test was corrected, not the code**, and a further case pins the real drop on the 24th. That is exactly what a real-data pin is for.
+- **Behavioral DoD confirmed live by the owner, then re-confirmed at the data layer via MCP** (the claim was about rows, so rendering alone wasn't enough): `journal_entries` holds **exactly one** row for `entry_date = 2026-07-20` after multiple saves — the upsert on the unique constraint edits rather than duplicating — and `record vid` flipped to `status = "Done"` from Today, with the other two tasks untouched.
+
+**Live DB state at close:** 1 user · 5 life_areas · 1 habit · 9 habit_checks · 1 journal_entry · 3 tasks (1 Done) · 3 goals.
+
+**Carried into Step 10:** decision F's stale-until-refresh trade-off (FUTURE.md); the D1 add-before-ready race still unfixed in `GoalsSection`/`TasksSection` (FUTURE.md, recipe recorded); `tasks.area_id` still nullable (next migration window); **MCP read-only lock remains user-asserted, never observed** — re-verify only via a write you actually intend to make, never a probe.
+
+**After DoD passes: stop. Step 10 (Journal list view + Pomodoro — note the table already exists, so this step may need no migration at all) is the next session's quest — and the PRD's planned usage pause after Step 10 (live with the app 1–2 weeks before Steps 11–12) starts there.**
