@@ -78,6 +78,30 @@ S-rank. Once v1's manual tracking is a stable habit:
   downgrade Next to 9.x).
 - **Supabase free-tier pause** after ~1 week of inactivity — daily use is the
   keep-alive; the Step 13 export button is the backup story.
-- **`tasks` schema tidy-up** (from AUDIT_1): add `NOT NULL` on `tasks.user_id` and
-  the missing `tasks_user_id_idx`/`tasks_area_id_idx` indexes during the next
-  migration window that has MCP write access (Step 7 is the natural slot).
+- **`tasks` schema tidy-up** (from AUDIT_1): ~~add `NOT NULL` on `tasks.user_id` and
+  the missing `tasks_user_id_idx`/`tasks_area_id_idx` indexes~~ — **DONE in Step 7**,
+  migration `20260720122759 harden_tasks_user_id_and_indexes`. **Still open:**
+  `tasks.area_id` remains **nullable** while `goals.area_id` is NOT NULL. That is
+  the exact column the D1 race below writes null into, so the constraint would
+  catch the bug at the DB level. Needs a null-row check first (1 task row exists).
+  Next migration window.
+
+## Recorded in Step 7, to fix when those files are next open
+
+- **D1 backfill-fix for `GoalsSection` / `TasksSection` (the add-before-ready race).**
+  Step 7's `useHabits` was built with the guard; Goals and Tasks still have the
+  original pattern. In both, the "+ Add" button renders while `status === "loading"`,
+  before `ensureAreasSeeded` populates `areaIds.current`. A submit inside that
+  one-round-trip window calls `patchToRow` with an empty map → `area_id` undefined →
+  the row lands with `area_id = null` → the `life_areas!inner(name)` join hides it
+  from every future fetch: an invisible orphan row while the UI says "save failed."
+  **The fix, already proven in `components/habits/useHabits.ts`:** resolve the area
+  id *before* the insert and hard-bail with a real message if it's missing
+  (`NOT_READY`), plus gate the add control on `status === "ready"` in the section.
+  Apply the same two changes to `components/goals/useGoals.ts` + `GoalsSection.tsx`
+  and `components/tasks/useTasks.ts` + `TasksSection.tsx`. Not done in Step 7 on
+  purpose — one step, one scope (AUDIT_1 D1).
+- **Triplicated hook pattern.** `useGoals`, `useTasks`, `useHabits` now share the
+  same bootstrap-await + optimistic-write + `resyncAfterError` shape. Triplication is
+  accepted for v1 pedagogy (AUDIT_1 §3); consider a shared factory only post-v1, and
+  only if a fourth copy appears.

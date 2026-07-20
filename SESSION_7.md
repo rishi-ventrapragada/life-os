@@ -90,3 +90,9 @@ No `EXISTS` on `habits`. **The hole:** an attacker who knows a victim's `habit_i
 Two `/mcp` reconnects failed to rebind the session to the read-only URL — the file on disk was correct while the live session stayed write-capable. Only a **full VS Code window reload** (extension-host restart) re-read `.mcp.json`. Also: **never test the lock with a write probe.** Two probes ran before this was settled; the second left a junk migration row `20260720123536 readonly_lock_verification_expect_rejection` in `supabase_migrations.schema_migrations` (owner removes it in the dashboard — migration-bookkeeping writes don't go through Claude). Read-only status isn't observable from the tool list (`apply_migration` is advertised either way; `read_only` is enforced server-side at call time), so after a reload the lock is **user-asserted**, not verified.
 
 **After DoD passes: stop. Step 8 (Habit streaks + monthly grid — computed from the `habit_checks` rows this step creates) is the next session's quest.**
+
+## RESUME-HERE (next session)
+- Push d8bfe42 is live; Vercel deployed.
+- DB verified clean: 1 user / 5 areas / 0 habits / 0 checks. Junk migration row 20260720123536 deleted.
+- Decisions A (EXISTS ownership INSERT policy) + B (archived_at, is_archived gone) confirmed via pg_policies/columns/constraint read-back.
+- NEXT TASK: behavioral DoD for Habits — add habit → refresh → persists; check today → exactly one row check_date=2026-07-20 → uncheck → gone; re-check makes no duplicate; edit persists; archive hides habit but its checks survive.
