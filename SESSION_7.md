@@ -79,20 +79,38 @@ No `EXISTS` on `habits`. **The hole:** an attacker who knows a victim's `habit_i
 
 `archived_at` replaces the `is_archived boolean` that Increment 1 shipped (and that PRD §6 specified). **NULL = active; a timestamp = archived**, preserving *when*. Every "active habits" query filters `archived_at IS NULL`. Archiving removes a habit from today's checklist but **must NOT delete its `habit_checks`** — Step 8 streaks need that history. `habits` had 0 rows when this was decided, so the column swap carried no data risk. PRD §6 line corrected to match.
 
-### Pending migration — the RLS matrix must prove the FINAL policy
+### Decision A+B migration — ✅ APPLIED and verified (not pending)
 
-`harden_habit_checks_insert_and_archive_column` (Decision A policy replacement + Decision B column swap) is **pending** and must land in a proper MCP unlock window **before** the adversarial RLS matrix runs. The matrix must never certify a stale policy.
+`20260720125059 harden_habit_checks_insert_and_archive_column` (Decision A policy replacement + Decision B column swap) **landed** in the unlock window and was read back from the DB. Do **not** re-apply it. The INSERT policy now reads:
 
-**The S1 matrix gains a new required case:** an attacker inserting a `habit_checks` row that references a habit they do **not** own, stamped with their **own** honest `user_id`, must be **REJECTED**. Under the old policy this would have *succeeded* — this case is exactly what proves Decision A landed.
+```sql
+(((SELECT auth.uid()) = user_id) AND (EXISTS ( SELECT 1
+   FROM habits h
+  WHERE ((h.id = habit_checks.habit_id) AND (h.user_id = (SELECT auth.uid()))))))
+```
+
+`habits.archived_at` (nullable timestamptz) present, `is_archived` gone; `unique (habit_id, check_date)` and the `ON DELETE CASCADE` FK survived; advisors show only the accepted Pro-gated leaked-password WARN.
+
+### S1 RLS matrix — ✅ PASSED 22/22 against the final policy
+
+`scripts/rls-test.mjs` (git-ignored) was extended to **11 assertions × 2 directions** across `habits` and `habit_checks` — vs Step 6's 4 one-directional checks. All R/U/D returned 0 rows; both cross-owner forced-`user_id` INSERTs rejected; both victims' rows intact afterwards.
+
+**The Decision A case passed with `42501` in both directions** — an attacker inserting a `habit_checks` row referencing a habit they do **not** own, stamped with their **own** honest `user_id`, was rejected by the `EXISTS` clause. The test scores **23505 as a FAIL on purpose**: a unique violation would mean RLS *accepted* the row and only the constraint stopped it — the slot-squat DoS still live. Only a real RLS rejection (42501) passes. MCP ground truth confirmed **zero attacker rows landed** and every check's `user_id` matches its habit's owner.
+
+Throwaway accounts `+rlsA`/`+rlsB` and their rows were deleted afterwards (children before parents, dashboard SQL editor).
 
 ### MCP lock-dance note (learned the hard way this session)
 
-Two `/mcp` reconnects failed to rebind the session to the read-only URL — the file on disk was correct while the live session stayed write-capable. Only a **full VS Code window reload** (extension-host restart) re-read `.mcp.json`. Also: **never test the lock with a write probe.** Two probes ran before this was settled; the second left a junk migration row `20260720123536 readonly_lock_verification_expect_rejection` in `supabase_migrations.schema_migrations` (owner removes it in the dashboard — migration-bookkeeping writes don't go through Claude). Read-only status isn't observable from the tool list (`apply_migration` is advertised either way; `read_only` is enforced server-side at call time), so after a reload the lock is **user-asserted**, not verified.
+Two `/mcp` reconnects failed to rebind the session to the read-only URL — the file on disk was correct while the live session stayed write-capable. Only a **full VS Code window reload** (extension-host restart) re-read `.mcp.json`. Also: **never test the lock with a write probe.** Two probes ran before this was settled; the second left a junk migration row `20260720123536 readonly_lock_verification_expect_rejection` — **since deleted by the owner in the dashboard** (migration-bookkeeping writes don't go through Claude).
+
+**Lock state at session close: USER-ASSERTED, NOT OBSERVED.** After the final re-lock no verification ran. Read-only status **isn't observable** from the tool list — `apply_migration` is advertised either way and `read_only` is enforced server-side at call time — and the only reliable signal (attempting a write and seeing it rejected) is off-limits after two probes. **Next session: treat the lock as unverified.** Confirm it, if at all, via a write you actually intend to make — never a throwaway probe.
 
 **After DoD passes: stop. Step 8 (Habit streaks + monthly grid — computed from the `habit_checks` rows this step creates) is the next session's quest.**
 
 ## RESUME-HERE (next session)
-- Push d8bfe42 is live; Vercel deployed.
+- Push d8bfe42 is live; Vercel deployed. (Follow-up commits: 34c9f13 RLS result + notes; this doc-fix commit is the latest — `git log --oneline -3` for the exact head.)
 - DB verified clean: 1 user / 5 areas / 0 habits / 0 checks. Junk migration row 20260720123536 deleted.
-- Decisions A (EXISTS ownership INSERT policy) + B (archived_at, is_archived gone) confirmed via pg_policies/columns/constraint read-back.
-- NEXT TASK: behavioral DoD for Habits — add habit → refresh → persists; check today → exactly one row check_date=2026-07-20 → uncheck → gone; re-check makes no duplicate; edit persists; archive hides habit but its checks survive.
+- Decisions A (EXISTS ownership INSERT policy) + B (archived_at, is_archived gone) confirmed via pg_policies/columns/constraint read-back. **Migration 20260720125059 is APPLIED — do not re-apply.**
+- **S1 RLS matrix PASSED 22/22** against the final policy, both directions, both tables; Decision A case rejected with 42501 (not 23505). Gate is closed.
+- **MCP read-only lock is USER-ASSERTED, not observed** — re-verify after a fresh window reload, and only via a write you actually intend to make.
+- NEXT TASK: behavioral DoD for Habits — add habit → refresh → persists; check today → exactly one row check_date=2026-07-20 → uncheck → gone; re-check makes no duplicate; edit persists; archive hides habit but its checks survive. **This is the only gate left before Step 7 closes.**
