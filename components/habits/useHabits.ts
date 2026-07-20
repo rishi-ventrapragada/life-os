@@ -82,8 +82,11 @@ export function useHabits() {
       setError(SAVE_FAILED);
       return false;
     }
-    // A brand-new habit cannot have a check yet.
-    setHabits((prev) => [...prev, rowToHabit(row as unknown as HabitRow, new Set())]);
+    // A brand-new habit cannot have a check yet — empty history map.
+    setHabits((prev) => [
+      ...prev,
+      rowToHabit(row as unknown as HabitRow, new Map(), getTodayIST()),
+    ]);
     return true;
   }
 
@@ -147,8 +150,23 @@ export function useHabits() {
   async function toggleToday(habit: Habit) {
     setError(null);
     const next = !habit.checkedToday;
+    const today = getTodayIST();
+
+    // Move checkDates too, not just the flag: the streak badge and the grid
+    // both read that array, so they update with the checkbox instead of
+    // waiting for a refetch. resyncAfterError() still corrects any lie.
     setHabits((prev) =>
-      prev.map((h) => (h.id === habit.id ? { ...h, checkedToday: next } : h)),
+      prev.map((h) =>
+        h.id === habit.id
+          ? {
+              ...h,
+              checkedToday: next,
+              checkDates: next
+                ? [...h.checkDates, today].sort()
+                : h.checkDates.filter((d) => d !== today),
+            }
+          : h,
+      ),
     );
 
     if (next) {

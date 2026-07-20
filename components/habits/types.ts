@@ -19,4 +19,10 @@ export type Habit = {
   archivedAt: string | null;
   /** Derived: a habit_checks row exists for today's IST date. */
   checkedToday: boolean;
+  /**
+   * Every "yyyy-mm-dd" check inside the fetched window (Step 8), ascending.
+   * Feeds computeStreaks() and the monthly grid. `checkedToday` is derived from
+   * this same array, so the two can never disagree.
+   */
+  checkDates: string[];
 };

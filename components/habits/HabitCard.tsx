@@ -1,6 +1,9 @@
 "use client";
 
 import GlowCard from "@/components/GlowCard";
+import HabitGrid from "@/components/habits/HabitGrid";
+import { getTodayIST } from "@/lib/dates";
+import { computeStreaks } from "@/lib/streaks";
 import type { Habit } from "@/components/habits/types";
 
 type HabitCardProps = {
@@ -20,6 +23,8 @@ export default function HabitCard({
   onArchive,
 }: HabitCardProps) {
   const { checkedToday } = habit;
+  // Computed here, never stored (PRD §6) — lib/streaks.ts owns the maths.
+  const { current, max } = computeStreaks(habit.checkDates, getTodayIST());
 
   return (
     <GlowCard className="flex flex-col gap-4">
@@ -90,6 +95,16 @@ export default function HabitCard({
           </span>
         </span>
       </button>
+
+      <div className="mt-auto flex flex-col gap-3">
+        <div className="flex items-center gap-2 text-xs">
+          <span className="rounded-md border border-(--color-accent)/40 bg-(--color-accent)/10 px-2 py-0.5 text-(--color-accent-soft)">
+            {current === 1 ? "1 day" : `${current} days`} streak
+          </span>
+          <span className="text-(--color-text-muted)">best {max}</span>
+        </div>
+        <HabitGrid checkDates={habit.checkDates} />
+      </div>
     </GlowCard>
   );
 }
