@@ -48,4 +48,31 @@
 - **Env/deploy unchanged:** `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY` in Vercel; anon key client-safe; service-role key never ships. Push to `main` auto-deploys.
 - **Windows gotchas** ([[windows-dev-loop-gotchas]]): kill node via PowerShell (`Get-Process node | Stop-Process -Force`), not bash `pkill`; stop the dev server before `npm run build` (shared `.next`). The localhost React hydration warning is the **Grammarly extension**, not app code ([[grammarly-hydration-warning-not-ours]]) — don't "fix" it. The **behavioral** evidence (a real multi-day streak displaying correctly, the grid showing the right filled days) is what counts, not "should work."
 
+## Step 8 — COMPLETE (2026-07-20) · commit `dc474da`
+
+**Decisions locked this session** (asked before building, not discovered after):
+- **D1 — current streak counts the unbroken run ending YESTERDAY when today is unchecked.** Checks on 17/18/19 with today unchecked ⇒ **3**, not 4 and not 0. The value is the run's real length: it never optimistically includes an unchecked today (which would force the number to *drop* at IST midnight — a streak that decreases while you do nothing reads as a bug), and never zeroes a live streak just because the day is young.
+- **D2 — archived habits render nowhere.** The active list already filters `archived_at IS NULL`; no streak or grid is computed for them. Their `habit_checks` history stays in the DB for a future archived view (out of scope).
+- **D3 — test history came from user-run backdated SQL** in the dashboard editor. **MCP stayed `read_only=true` the whole session — no unlock, no lock dance, no write probe.**
+
+**Date arithmetic (`lib/dates.ts`) — built test-first, before any streak code.** AUDIT_1 §6 named ad-hoc `new Date()` math inside streak logic as the likeliest future Law-3 violation, so the 25 tests were written and **observed failing** (functions undefined, the 9 original `getTodayIST` tests still green) *before* implementing. `addDaysISO`/`diffDaysISO` split the `yyyy-mm-dd` string and go through **`Date.UTC`** — never `new Date(dateString)`, whose parsing is inconsistent (bare dates UTC, date-times local) and would shift dates in some timezones. Pinned: leap year (`2028-02-29` exists, 2027 has none), 30/31-day edges, year rollover, negative/zero steps, and the pair that catches leap-year bugs — `diffDaysISO("2026-03-01","2026-02-28")` = **1** vs `("2028-03-01","2028-02-28")` = **2**.
+
+**Streak math (`lib/streaks.ts`)** — `computeStreaks(checkDates, todayIST)`, pure, in `lib/` not a component. Sorts/dedupes (ISO dates sort chronologically), walks with `diffDaysISO`, and ignores future-dated rows so a stray row can't inflate the number. 16 tests: gap resets, month/year/leap boundaries, max strictly in the past, unsorted input, duplicates, caller-array immutability.
+
+**Data layer — widened, not duplicated.** The check fetch went from today-only to a **365-day trailing window** (`HISTORY_WINDOW_DAYS` in `habitsData.ts`): current-month-only would truncate a long streak, unbounded history grows forever. `Habit` gained `checkDates`, and **`checkedToday` is now derived from that same array** so the checkbox and the streak cannot disagree. `toggleToday` moves `checkDates` optimistically, so badge and grid update with the checkbox; `resyncAfterError` still corrects any lie. **No policy change was needed** — the widened query runs under the same JWT, so RLS scopes it to the owner; the Step 7 matrix (22/22) was not re-run, correctly.
+
+**UI** — streak badge on `HabitCard.tsx` (104 lines); **`HabitGrid.tsx` (52) its own file from the start**. The grid derives its month from `getTodayIST().slice(0,7)` — never the browser clock — and month length from `Date.UTC(y, m, 0)`, so February and leap years need no lookup table. Future days are styled distinctly from missed ones (otherwise a fresh month reads as a wall of failure). Cells are presentational: today is the only writable day and the checkbox already owns it.
+
+**Verification actually performed:**
+- **53/53 vitest pass** (34 dates + 16 streaks + 3 real-data).
+- **The prediction test:** current=3 / max=5 was stated **before** the backdated rows were pasted, then the 8 real rows were read back via MCP and the **shipped** `computeStreaks` produced exactly that. Pinned in `lib/streaks.realdata.test.ts` against real rows, not a fixture — a refactor that breaks the live numbers now fails in the test run, not in the app.
+- `npm run build` clean; deployed bundle scanned and confirmed carrying the Step 8 strings.
+- **Behavioral DoD confirmed live by the owner:** streaks, the July grid, `best`, and hard-refresh persistence all correct, no errors.
+
+**Live DB state at close:** 9 `habit_checks` rows for the Coding habit — `2026-06-28..07-02` (5) and `2026-07-17..07-20` (4). The owner's check-today test left `2026-07-20` in place, so the app now shows a genuine **current 4 / best 5**. Not test residue to clean: they are real rows and Step 9 can use them.
+
+**Law 1 at close:** `useHabits.ts` 185, `HabitCard.tsx` 104, `habitsData.ts` 81, `HabitForm.tsx` 74, `HabitGrid.tsx` 52, `types.ts` 27; `lib/`: `streaks.ts` 58, `dates.ts` 50. All under the ~200 cap, but **`useHabits.ts` at 185 is the one to watch** — Step 9 should not grow it.
+
+**Carried into Step 9:** the D1 add-before-ready race still unfixed in `GoalsSection`/`TasksSection` (FUTURE.md, recipe recorded); `tasks.area_id` still nullable (next migration window); **MCP read-only lock remains user-asserted, never observed** — re-verify only via a write you actually intend to make.
+
 **After DoD passes: stop. Step 9 (the Today section — the daily check-in that assembles habits due + tasks due/overdue + journal quick-line + week indicator) is the next session's quest.**
