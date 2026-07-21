@@ -53,4 +53,29 @@
 - **Windows gotchas** ([[windows-dev-loop-gotchas]]): kill node via PowerShell, not bash `pkill`; stop the dev server before `npm run build`. The localhost hydration warning is the Grammarly extension ([[grammarly-hydration-warning-not-ours]]) — don't "fix" it.
 - **Verification bar:** predict expected results before looking at the UI; confirm derived counts and persistence against real rows via MCP. "It renders" is not "the count is right."
 
+## Step 11 — COMPLETE (2026-07-21) · commit `2a39c77`
+
+**Decisions locked this session** (asked before building):
+- **D1 — `assignments.status` = `Pending / Done`** (2-state, CHECK-constrained). Course "done/total" is a count of `Done`, computed from rows.
+- **D2 — one migration, all three tables** (FK order courses → assignments → timetable_slots). One unlock window; the RLS gate ran once across all three.
+- **D3 — timetable = row-per-slot** `(day_of_week 0–6, time_label, subject)`, rendered Mon-first, grouped by day.
+
+**Migration `create_academics_courses_assignments_timetable`** — courses (7th RLS table), assignments (8th, child of courses), timetable_slots (9th). Verified by read-back, not the success flag: **12 policies**, all `user_id` NOT NULL, `assignments.status` + `day_of_week` CHECKs, `course_id → courses ON DELETE CASCADE` with `user_id` FKs non-cascade, 4 FK/user_id indexes, RLS on all three, advisors clean bar the accepted leaked-password WARN. **The `assignments` INSERT policy carries the parent-ownership `EXISTS` on courses** (SECURITY.md child-table rule from Step 7) — not the weak user-id-only form.
+
+**RLS gate — PASSED 62/62** (31 per direction, all six RLS tables). The parent-ownership case — attacker inserts an assignment referencing the **victim's course** with their **own honest** `user_id` — was rejected with **42501** in both directions. 23505 was coded as a FAIL per the house rule; here no unique constraint even applies, so a rejection could only be the policy. MCP ground truth confirmed **0 attacker rows** and **0 cross-owner assignments** (no row whose `user_id` differs from its course's owner). Throwaways `+rlsE`/`+rlsF` cleaned up; DB back to 1 user.
+
+**Three slices** in `components/academics/`, mirroring the proven `useTasks`/`useGoals` shape (optimistic writes, `resyncAfterError`, `useSession`):
+- **Courses** — `useCourses` (no `life_areas`, so no `ensureAreasSeeded`); deleting a course cascade-deletes its assignments.
+- **Assignments** — `useAssignments` guards the parent: `addAssignment` resolves and verifies `course_id` against loaded courses before insert (the parent-ownership analogue of the D1 area-id guard). Done/total is a **pure count** in `lib/academics.ts` (`courseDoneTotal`), never a stored column — vitest-covered.
+- **Timetable** — `useTimetable`; `WeeklyTimetable` renders Mon-first from a fixed constant array; `day_of_week` is an int, never `new Date()` (Law 3).
+- `AcademicsSection` composes the three and holds the shared course/assignment hooks so done/total reads one source. **166 lines**, the largest file, under the ~200 cap (Law 1).
+
+**Verification actually performed:**
+- **100/100 vitest** (adds 5 `academics`); `npm run build` clean; deployed bundle scanned for the Step 11 markers **and** service-role/secret-shaped strings (clean); no `transition-all`; no `new Date()` maths.
+- **Owner-verified live**, then **re-confirmed at the data layer via MCP**: after cleanup the DB holds 1 course (`Software Engineering`) + its 1 assignment (0/1) + 0 slots — real owner usage, **0 attacker/orphan rows**, and every assignment owned by its course. The cascade and done/total paths were exercised and the RLS gate proved the FK integrity directly.
+
+**Live DB state at close:** 1 user · 5 life_areas · 1 habit · 9 habit_checks · 2 journal_entries · 3 tasks · 3 goals · **1 course · 1 assignment · 0 timetable_slots**.
+
+**Carried into Step 12:** MCP read-only lock is user-asserted (re-verify only via an intended write); D1 race in Goals/Tasks and the decision-F provider lift still parked in FUTURE.md; `tasks.area_id` still nullable.
+
 **After the three sub-steps pass: stop. Step 12 (Fitness — split table + workout log) is next, then Step 13 (finishing touches + data export + responsive pass). The usage pause applies again before 12.**
