@@ -1,6 +1,7 @@
 import GlowCard from "@/components/GlowCard";
 import { getTodayIST } from "@/lib/dates";
 import { dueLabel } from "@/lib/due";
+import { formatISODate } from "@/lib/formatDate";
 import type { Task, Priority } from "@/components/tasks/types";
 
 type TaskCardProps = {
@@ -8,17 +9,6 @@ type TaskCardProps = {
   onEdit: () => void;
   onDelete: () => void;
 };
-
-const MONTHS = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-];
-
-/** Pure string formatting of the "yyyy-mm-dd" input value — no Date objects. */
-function formatDate(iso: string): string {
-  const [y, m, d] = iso.split("-");
-  return `${Number(d)} ${MONTHS[Number(m) - 1] ?? "?"} ${y}`;
-}
 
 const PRIORITY_CLASS: Record<Priority, string> = {
   Low: "border-(--color-border) text-(--color-text-muted)",
@@ -59,7 +49,7 @@ export default function TaskCard({ task, onEdit, onDelete }: TaskCardProps) {
         </h3>
         {task.dueDate && (
           <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-(--color-text-muted)">
-            <span>Due {formatDate(task.dueDate)}</span>
+            <span>Due {formatISODate(task.dueDate)}</span>
             {label && (
               <span
                 className={`rounded-full px-2 py-0.5 text-[0.65rem] font-medium uppercase tracking-[0.1em] ${
