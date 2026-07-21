@@ -48,4 +48,24 @@
 - **Windows gotchas** ([[windows-dev-loop-gotchas]]): kill node via PowerShell (`Get-Process node | Stop-Process -Force`), not bash `pkill`; stop the dev server before `npm run build` (shared `.next`). The localhost React hydration warning is the **Grammarly extension** ([[grammarly-hydration-warning-not-ours]]) — don't "fix" it.
 - **Verification bar (what Steps 8 and 9 proved works):** predict the expected result *before* looking at the UI, then confirm against real rows via MCP. For the timer, "it counts down" is not evidence it's *accurate* — check it against wall-clock elapsed time, and check what happens after the tab has been backgrounded.
 
+## Step 10 — COMPLETE (2026-07-21) · commit `dcb791f`
+
+**No migration, no RLS gate.** Confirmed via MCP before building that `journal_entries` already existed (Step 9) and no new table is born; MCP stayed `read_only=true` all session. The adversarial matrix was **not** re-run and no throwaway accounts were created — correct, since nothing new was created.
+
+**Journal (PRD §4.7):**
+- `components/journal/useJournal.ts` — the many-day hook, a **sibling** to `useJournalToday` rather than a grown version of the 95-line file. Writes are UPSERTs on `unique (user_id, entry_date)`, so re-saving a date edits that row; the DB constraint is the source of truth.
+- **J1** — every listed day editable inline; the add form carries a date input (capped at today) for backfill; no delete (PRD doesn't mention one).
+- **J2** — today appears in the list as an editable row.
+- `formatDate` was duplicated in `TaskCard` and `TodayDate`; Journal would have been the third copy, so it was lifted to **`lib/formatDate.ts`** (`formatISODate`) with vitest coverage, and `TaskCard` now imports it.
+
+**Pomodoro (PRD §4.8):** frontend-only, no persistence — a refresh resets it. **Law 3 subtlety stated in the code:** a 25/5 timer is a *duration*, not a calendar date, so `getTodayIST()` doesn't apply — but it is still **timestamp-based, not tick-decrement**: `remaining` is derived from `endAt - Date.now()` each render, so `setInterval` only drives repaints and the value stays accurate through drift and background-tab throttling. Phase transitions auto-advance work↔break but **stop** rather than running away. `mm:ss` uses tabular-nums; `formatRemaining` rounds up and clamps negatives (tested).
+
+**Verification actually performed:**
+- **95/95 vitest** (77 prior + 6 `formatDate` + 12 `pomodoro`); `npm run build` clean; deployed bundle scanned for all 5 Step 10 markers **and** for service-role/secret-shaped strings (clean); largest new file 97 lines (Law 1).
+- **Behavioral DoD confirmed live by the owner**, then **re-confirmed at the data layer via MCP** (the one-per-day claim is about rows, not rendering): `journal_entries` holds **2 rows, one per day**, `2026-07-21` and `2026-07-20`; the 20th's content had changed (`"completed 3 steps"` → `"completed 3.5 steps in claude code"`), proving the re-save **edited in place**; the `group by entry_date having count(*) > 1` check returned **zero rows** — the unique guarantee holds against real data. The timer's background-tab accuracy (the thing "it counts down" hides) was owner-verified.
+
+**Live DB state at close:** 1 user · 5 life_areas · 1 habit · 9 habit_checks · **2 journal_entries** · 3 tasks (1 Done) · 3 goals.
+
+**v1 is now feature-complete for the daily-use core** (Today, Goals, Habits+streaks, Tasks, Journal, Pomodoro, Auth). Academics (11) and Fitness (12) remain, then finishing touches (13).
+
 **After DoD passes: stop — and take the PRD's planned usage pause (§8: live with the app 1–2 weeks) before Step 11 (Academics). Steps 11–13 should be re-prioritised by what daily use actually reveals.**
