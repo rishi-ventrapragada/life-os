@@ -50,3 +50,83 @@
 - **Verification bar:** the export is the one thing to verify hard — download the file, open it, and confirm (via MCP for the owner) that each table's row count in the JSON matches the DB. "The button downloaded something" is not "it exported everything."
 
 **After DoD passes: STOP — v1 is complete.** The next chapter is the pre-v2 security audit + MFA gate (SECURITY.md "Before v2"), then the post-v1 roadmap (PRD §11 / FUTURE.md: gamification "The System", charts, finance, calendar, multi-user, AI agent). But first: use the finished app, and celebrate — the foundation is built.
+
+## Step 13 — COMPLETE (2026-07-22) · commit `b53e0b7`
+
+The finishing-touches pass — mostly frontend polish over the 11 feature-complete
+tables plus one new read-only feature. No schema change, no migration, no RLS gate;
+MCP stayed `read_only=true` all session (used only for the export row-count truth).
+Scope held tight against gold-plating — where the audit found things already correct,
+they were left alone rather than churned.
+
+**Data export (the one new feature).** `lib/exportData.ts` — `EXPORT_TABLES` (all 11,
+fixed order) + `collectExport(client)`, which reads every table through the shared
+**anon-key client under RLS**, so the file can only ever contain the owner's own rows
+(no service key, no server endpoint). Raw date strings pass through verbatim (Law 3);
+`exportedAt` is the one legitimate `new Date()` instant (a timestamp, not a calendar
+date). A single failing table surfaces an error instead of producing a partial file
+that looks complete. `components/today/ExportButton.tsx` (Blob + object-URL download,
+filename `life-os-export-<getTodayIST()>.json`) sits in the **Today** section header —
+visible on mobile, unlike the `hidden md:block` Sidebar (user-confirmed placement).
+`lib/exportData.test.ts` asserts all 11 tables are listed and that `collectExport`
+reads each and shapes `{ exportedAt, tables }` (empty table → `[]`, failing table →
+recorded + `[]`).
+
+**Empty/loading audit (consistency, not rewrite).** The real inconsistency was
+*loading copy* — unified to plain **"Loading <noun>…"** across Today/Goals/Habits/
+Tasks/Journal (dropped the possessive "your" and the two bare "Loading…"). Academics/
+Fitness were already in that voice; AuthGate's bare "Loading…" is the pre-auth
+whole-app state (no noun applies) and stayed. **Empty states were already correctly
+matched to their layouts** — the Fitness split renders "Rest" per day (not a blank
+grid, as the kickoff feared), inline sub-feature lists (Assignments, WorkoutLog) use a
+bare muted `<p>` because a nested GlowCard would be visually heavy — so they were left
+as-is. No hook/status/gating logic touched.
+
+**Responsive / 375px.** One real fix: `app/page.tsx` `<main>` padding
+`px-8 py-16` → `px-4 py-10 sm:px-8 sm:py-16`, section gap `24`→`16` on phone.
+Everything else was already responsive-friendly — grids collapse below `sm`/`md`, all
+form fields `w-full`, and a grep confirmed **no fixed-px width containers** anywhere
+(the only `w-56` is inside the `hidden md:block` Sidebar). No redesign, no mobile nav
+(Sidebar-hidden-below-md is the accepted design; sign-out stays Sidebar-only on
+mobile — noted, not fixed → FUTURE.md if it ever bites).
+
+**README.** Stock create-next-app boilerplate replaced with a real description: what
+the app is, the stack, the one-page architecture, the scripts, and the env vars **by
+name only** (`NEXT_PUBLIC_SUPABASE_URL` / `_ANON_KEY`) with the service-role-never-ships
+warning. No values.
+
+**Folded in (user-approved mid-session).** `npm run lint` was red on a **pre-existing**
+error in `components/pomodoro/usePomodoro.ts` from Step 10 (`dcb791f`) — `remaining` was
+computed by reading a ref **and** calling `Date.now()` during render, which the React 19
+`react-hooks/refs` + `react-hooks/purity` rules now reject. Fixed by moving `endAt` to
+state and moving the wall-clock read into the interval effect, so **render reads only
+state**. Timing semantics are unchanged (`remaining` is still recomputed from `endAt`,
+never decremented; an immediate `tick()` avoids a 250ms start lag) and the hook's public
+shape is identical, so `PomodoroTimer` is untouched. This was the one debugging detour:
+the first fix (endAt→state but `Date.now()` still in render) traded the refs error for a
+purity error; the second (read the clock in the effect) cleared both.
+
+**Verification actually performed:**
+- **108/108 vitest** (adds 5 `exportData` cases); **`npm run lint` clean** (was red on the
+  inherited Pomodoro error, now green); **`npm run build` clean**. Hit one real TS error —
+  the Supabase `select()` returns a thenable, not a `Promise`, so the export client type
+  used `PromiseLike`; caught by the build, fixed, rebuilt green.
+- **Secret-scan** of the staged diff clean (README names env vars only). `rls-test.mjs`
+  stayed git-ignored; **`.mcp.json` stayed `read_only=true`** — no write-probe, only a read
+  query ran all session.
+- **Export row-count truth (MCP, owner):** `life_areas 5 · goals 3 · tasks 4 · habits 7 ·
+  habit_checks 12 · journal_entries 2 · courses 1 · assignments 1 · timetable_slots 1 ·
+  workout_split 1 · workout_logs 0`. The downloaded JSON must match these table-for-table
+  (`workout_logs` present as `[]`).
+
+**Owner-gated live checks (the two things I can't fake from here):**
+1. **Export downloads real data** — click ↓ Export my data on the deployed app, open the
+   file, confirm each table's row count matches the counts above (and `workout_logs: []`).
+2. **App is usable at 375px** — no horizontal page scroll, forms/grids/tables don't
+   overflow, sections stack to one column.
+
+**v1 is complete** once those two confirm. All 8 PRD §4 sections exist and persist behind
+auth across 11 RLS-protected tables, the app is responsive, and the user can export all
+their data. No SESSION_14 kickoff is created — the next chapter (pre-v2 **security audit +
+MFA gate**, SECURITY.md "Before v2") is its own decision, not an auto-created step. After
+that: the post-v1 roadmap (PRD §11 / FUTURE.md).
