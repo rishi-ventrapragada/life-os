@@ -62,7 +62,7 @@ export default function HabitsSection() {
 
         {status === "loading" ? (
           <GlowCard>
-            <p className="text-(--color-text-muted)">Loading your habits…</p>
+            <p className="text-(--color-text-muted)">Loading habits…</p>
           </GlowCard>
         ) : habits.length === 0 && !isAdding ? (
           <GlowCard>

@@ -7,6 +7,7 @@ import TodayHabits from "@/components/today/TodayHabits";
 import TodayTasks from "@/components/today/TodayTasks";
 import TodayJournalLine from "@/components/today/TodayJournalLine";
 import WeekProgress from "@/components/today/WeekProgress";
+import ExportButton from "@/components/today/ExportButton";
 import { useHabits } from "@/components/habits/useHabits";
 import { useTasks } from "@/components/tasks/useTasks";
 import { getTodayIST } from "@/lib/dates";
@@ -32,7 +33,10 @@ export default function TodaySection() {
 
   return (
     <section id="today" className="scroll-mt-8">
-      <SectionHeader eyebrow="Daily check-in" title="Today" />
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <SectionHeader eyebrow="Daily check-in" title="Today" />
+        <ExportButton />
+      </div>
 
       <div className="mt-6">
         <GlowCard glow="strong" className="flex flex-col gap-8">
@@ -47,7 +51,7 @@ export default function TodaySection() {
                 Habits
               </h3>
               {habits.status === "loading" ? (
-                <p className="text-sm text-(--color-text-muted)">Loading…</p>
+                <p className="text-sm text-(--color-text-muted)">Loading habits…</p>
               ) : (
                 <TodayHabits
                   habits={habits.habits}
@@ -67,7 +71,7 @@ export default function TodaySection() {
                 Due today
               </h3>
               {tasks.status === "loading" ? (
-                <p className="text-sm text-(--color-text-muted)">Loading…</p>
+                <p className="text-sm text-(--color-text-muted)">Loading tasks…</p>
               ) : (
                 <TodayTasks
                   tasks={tasks.tasks}

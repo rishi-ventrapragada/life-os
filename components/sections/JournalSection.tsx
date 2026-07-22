@@ -57,7 +57,7 @@ export default function JournalSection() {
 
         {status === "loading" ? (
           <GlowCard>
-            <p className="text-(--color-text-muted)">Loading your journal…</p>
+            <p className="text-(--color-text-muted)">Loading journal…</p>
           </GlowCard>
         ) : entries.length === 0 && !isAdding ? (
           <GlowCard>

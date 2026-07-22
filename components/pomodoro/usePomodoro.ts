@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { PHASE_MS, nextPhase, type Phase } from "@/lib/pomodoro";
 
 type RunState = "idle" | "running" | "paused";
@@ -12,44 +12,39 @@ type RunState = "idle" | "running" | "paused";
  * getTodayIST() does not apply and CLAUDE.md's "no custom clocks" rule (aimed at
  * ad-hoc date maths) is not the constraint here. But the implementation is still
  * timestamp-based rather than tick-decrement: the remaining time is derived from
- * a target `endAt = Date.now() + remaining`, and setInterval only forces a
- * re-render. Decrementing a counter each tick would drift and, worse, stall when
- * a background tab throttles or pauses its intervals; reading the wall clock each
- * render stays accurate through both.
+ * a target `endAt = Date.now() + remaining`, and the interval only recomputes
+ * `remaining` from that target. Decrementing a counter each tick would drift and,
+ * worse, stall when a background tab throttles or pauses its intervals; recomputing
+ * from the wall clock each tick stays accurate through both.
+ *
+ * The wall clock is read inside effects/handlers, never during render — render
+ * only reads state (`remaining`), keeping the component pure.
  */
 export function usePomodoro() {
   const [phase, setPhase] = useState<Phase>("work");
   const [runState, setRunState] = useState<RunState>("idle");
-  // When running: the wall-clock instant the phase ends. When idle/paused: null,
-  // and `remaining` holds the frozen ms left.
-  const endAtRef = useRef<number | null>(null);
+  // When running: the wall-clock instant the phase ends. When idle/paused: null.
+  const [endAt, setEndAt] = useState<number | null>(null);
+  // The ms left, recomputed from endAt while running and frozen otherwise. This
+  // is the single value render reads.
   const [remaining, setRemaining] = useState<number>(PHASE_MS.work);
-  // Forces re-render ~4x/sec while running so the display tracks the wall clock.
-  const [, setTick] = useState(0);
-
-  const remainingNow = useCallback(() => {
-    if (runState === "running" && endAtRef.current !== null) {
-      return Math.max(0, endAtRef.current - Date.now());
-    }
-    return remaining;
-  }, [runState, remaining]);
 
   function start() {
     if (runState === "running") return;
-    endAtRef.current = Date.now() + remaining;
+    setEndAt(Date.now() + remaining);
     setRunState("running");
   }
 
   function pause() {
-    if (runState !== "running") return;
-    setRemaining(remainingNow());
-    endAtRef.current = null;
+    if (runState !== "running" || endAt === null) return;
+    setRemaining(Math.max(0, endAt - Date.now()));
+    setEndAt(null);
     setRunState("paused");
   }
 
   const reset = useCallback(
     (toPhase: Phase = phase) => {
-      endAtRef.current = null;
+      setEndAt(null);
       setRemaining(PHASE_MS[toPhase]);
       setRunState("idle");
     },
@@ -60,31 +55,31 @@ export function usePomodoro() {
   const advance = useCallback(() => {
     const np = nextPhase(phase);
     setPhase(np);
-    endAtRef.current = null;
+    setEndAt(null);
     setRemaining(PHASE_MS[np]);
     setRunState("idle");
   }, [phase]);
 
-  // The one interval: while running, re-render to re-read the wall clock, and
-  // hand off to the next phase when the target instant passes. The value never
-  // lives in the interval — it is always recomputed from endAt — so a throttled
-  // or missed tick can't desync it.
+  // The one interval: while running, recompute `remaining` from the wall clock
+  // ~4x/sec, and hand off to the next phase when the target instant passes. The
+  // value is always recomputed from endAt — never decremented — so a throttled or
+  // missed tick can't desync it.
   useEffect(() => {
-    if (runState !== "running") return;
-    const id = setInterval(() => {
-      if (endAtRef.current !== null && Date.now() >= endAtRef.current) {
-        advance();
-      } else {
-        setTick((t) => t + 1);
-      }
-    }, 250);
+    if (runState !== "running" || endAt === null) return;
+    const tick = () => {
+      const now = Date.now();
+      if (now >= endAt) advance();
+      else setRemaining(endAt - now);
+    };
+    tick(); // sync immediately so the display doesn't wait up to 250ms
+    const id = setInterval(tick, 250);
     return () => clearInterval(id);
-  }, [runState, advance]);
+  }, [runState, endAt, advance]);
 
   return {
     phase,
     runState,
-    remaining: remainingNow(),
+    remaining,
     start,
     pause,
     reset: () => reset(),

@@ -46,7 +46,7 @@ export default function GoalsSection() {
 
         {status === "loading" ? (
           <GlowCard>
-            <p className="text-(--color-text-muted)">Loading your goals…</p>
+            <p className="text-(--color-text-muted)">Loading goals…</p>
           </GlowCard>
         ) : goals.length === 0 && !isAdding ? (
           <GlowCard>

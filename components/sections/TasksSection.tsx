@@ -77,7 +77,7 @@ export default function TasksSection() {
 
         {status === "loading" ? (
           <GlowCard>
-            <p className="text-(--color-text-muted)">Loading your tasks…</p>
+            <p className="text-(--color-text-muted)">Loading tasks…</p>
           </GlowCard>
         ) : tasks.length === 0 && !isAdding ? (
           <GlowCard>
