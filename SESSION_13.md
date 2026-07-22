@@ -119,13 +119,13 @@ purity error; the second (read the clock in the effect) cleared both.
   workout_split 1 · workout_logs 0`. The downloaded JSON must match these table-for-table
   (`workout_logs` present as `[]`).
 
-**Owner-gated live checks (the two things I can't fake from here):**
-1. **Export downloads real data** — click ↓ Export my data on the deployed app, open the
-   file, confirm each table's row count matches the counts above (and `workout_logs: []`).
-2. **App is usable at 375px** — no horizontal page scroll, forms/grids/tables don't
+**Owner-gated live checks — BOTH CONFIRMED (2026-07-22):**
+1. **Export downloads real data** ✅ — the downloaded JSON's table row counts match the DB
+   (and `workout_logs: []`).
+2. **App is usable at 375px** ✅ — no horizontal page scroll, forms/grids/tables don't
    overflow, sections stack to one column.
 
-**v1 is complete** once those two confirm. All 8 PRD §4 sections exist and persist behind
+**v1 is COMPLETE.** All 8 PRD §4 sections exist and persist behind
 auth across 11 RLS-protected tables, the app is responsive, and the user can export all
 their data. No SESSION_14 kickoff is created — the next chapter (pre-v2 **security audit +
 MFA gate**, SECURITY.md "Before v2") is its own decision, not an auto-created step. After
