@@ -23,10 +23,9 @@ export type Assignment = {
   status: AssignmentStatus;
 };
 
-/** 0 = Sunday … 6 = Saturday, matching JS getUTCDay ordering. */
-export const WEEKDAYS = [
-  "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday",
-] as const;
+// WEEKDAYS moved to lib/weekdays.ts (shared by Today, Academics, Fitness).
+// Re-exported here so existing academics imports keep working unchanged.
+export { WEEKDAYS } from "@/lib/weekdays";
 
 export type TimetableSlot = {
   id: string;
