@@ -52,4 +52,29 @@
 - **Windows gotchas** ([[windows-dev-loop-gotchas]]): kill node via PowerShell, not bash `pkill`; stop the dev server before `npm run build`. The localhost hydration warning is the Grammarly extension ([[grammarly-hydration-warning-not-ours]]) — don't "fix" it.
 - **Verification bar:** predict results before looking at the UI; confirm persistence + the area tag against real rows via MCP. "It renders" is not "it persisted."
 
+## Step 12 — COMPLETE (2026-07-22) · commit `c8a1962`
+
+**Decisions locked this session** (asked before building):
+- **F1 — the Gym/Calisthenics/Other tag lives on `workout_logs` only** (CHECK-constrained `area`). It describes the session actually done, a property of a log entry, not a recurring split slot.
+- **F2 — `workout_logs.completed` defaults to `true`.** You log a workout because it happened; the checkbox records a skipped session.
+- **F3 — no FK between the two tables.** So the SECURITY.md child-table `EXISTS` rule does NOT apply — both take the standard 4 policies.
+
+**Migration `create_fitness_split_and_logs`** — `workout_split` (10th RLS table), `workout_logs` (11th). Verified by read-back, not the success flag: 8 standard policies, both `user_id` NOT NULL, `day_of_week` + `area` CHECKs, `completed` default true, RLS on both, indexes present, advisors clean bar the accepted leaked-password WARN.
+
+**RLS gate — PASSED 82/82** (41 per direction, **all 11 RLS tables**). Both Fitness tables rejected forced-`user_id` INSERTs with **42501** — clean policy rejections, as expected since neither has a unique/parent constraint to mask the result. MCP ground truth: **0 attacker rows**, and `log_date` written as the correct IST date (2026-07-22, rolled from the 21st). Throwaways `+rlsG`/`+rlsH` cleaned up; DB back to 1 user.
+
+**Two slices** in `components/fitness/`, mirroring `useTimetable` (split) and `useJournal` (log): `useWorkoutSplit` + `SplitForm` + `WeeklySplit` (Mon-first); `useWorkoutLog` (newest-first) + `LogForm` (date defaults to `getTodayIST()`, area select, done) + `WorkoutLogList` (area pill + done checkbox). `FitnessSection` composes both — 100 lines, under the cap.
+
+**Refactor (third-use lift):** `WEEKDAYS` was duplicated in `academics/types.ts` and `today/TodayDate.tsx`; lifted to **`lib/weekdays.ts`** (`WEEKDAYS` + Mon-first `WEEK_DISPLAY_ORDER`) with vitest coverage. `academics/types.ts` re-exports it so existing imports kept working; `WeeklyTimetable` + `TodayDate` repointed. No behaviour change — confirmed by the build staying green.
+
+**Verification actually performed:**
+- **103/103 vitest** (adds 3 `weekdays`); `npm run build` clean; deployed bundle scanned for the Step 12 markers **and** secret-shaped strings (clean); no `new Date()` maths / no `transition-all` in the fitness folder.
+- **Owner-verified live**, then **re-confirmed at the data layer via MCP** (area + done are column-value claims): the split row is `day_of_week=1 → "Push"`; the log row is `pushups`, **area `Calisthenics`**, `completed=false` (the toggle wrote through), `log_date=2026-07-22`. The tag and done-state persisted to the real columns, not just the render.
+
+**Live DB state at close:** 1 user · 5 life_areas · 1 habit · 9 habit_checks · 2 journal_entries · 3 tasks · 3 goals · 1 course · 1 assignment · 0 timetable_slots · **1 workout_split · 1 workout_log**.
+
+**v1 is now feature-complete** — all of PRD §4's sections exist and persist behind auth. Only Step 13 (finishing touches) remains.
+
+**Carried into Step 13:** MCP read-only lock is user-asserted (re-verify only via an intended write); D1 race in Goals/Tasks and the decision-F provider lift still parked in FUTURE.md; `tasks.area_id` still nullable.
+
 **After both sub-steps pass: stop. Step 13 (finishing touches — empty/loading states, the JSON data-export button, responsive/mobile pass, polish) is the FINAL v1 step — after it, v1 is done.**
