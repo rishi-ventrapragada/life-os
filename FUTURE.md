@@ -78,6 +78,17 @@ S-rank. Once v1's manual tracking is a stable habit:
   downgrade Next to 9.x).
 - **Supabase free-tier pause** after ~1 week of inactivity — daily use is the
   keep-alive; the Step 13 export button is the backup story.
+- **App-wide focus-visible ring may not render** (found SESSION_14, Commit 3).
+  The pattern `outline-none focus-visible:outline-2 focus-visible:outline-(--color-accent-edge)`
+  used on many controls (old Sidebar links, section "+ Add" buttons, AccountBlock,
+  MobileNav anchors) computes `outline-style: none` in Tailwind v4 — width and colour
+  are set but no line draws, so keyboard focus is invisible. The wheel (`OptionWheel`)
+  was fixed by adding `focus-visible:outline-solid`; the same one-class fix applies
+  everywhere the pattern appears. Verified via headless Chrome (real Tab):
+  `outlineStyle` went `none` → `solid` after adding `outline-solid`. Sweep the app and
+  add `focus-visible:outline-solid` (or switch to the `.glow-card:focus-visible`
+  explicit-shorthand pattern) wherever the bug pattern is used. Accessibility fix,
+  not cosmetic — do it in the next UI-polish window.
 - **`tasks` schema tidy-up** (from AUDIT_1): ~~add `NOT NULL` on `tasks.user_id` and
   the missing `tasks_user_id_idx`/`tasks_area_id_idx` indexes~~ — **DONE in Step 7**,
   migration `20260720122759 harden_tasks_user_id_and_indexes`. **Still open:**

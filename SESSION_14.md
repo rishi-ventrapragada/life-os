@@ -6,7 +6,36 @@ This file is the single source of truth for resuming SESSION_14. The build brief
 `SESSION_14_BRIEF.md` (the spec — read it too). This file records what has been **decided,
 diagnosed, and planned** so a future session can start cold without re-deriving anything.
 
-Status as of this checkpoint: **Commits 1 & 2 SHIPPED. Commit 3 (wiring) not started.**
+Status as of this checkpoint: **Commits 1, 2 & 3 all built + verified. SESSION_14 feature complete
+(pending owner-gated authed live check + Vercel deploy confirmation).**
+
+---
+
+## COMMIT 3 — SHIPPED (built + verified this session)
+- `components/reactbits/OptionWheel.tsx`: added controlled `value` prop with a **silent sync** (no
+  onChange) — the mechanism that breaks the feedback loop — plus a11y (focus-visible ring via
+  `outline-solid`+accent-edge, Enter/Space/Home/End, `aria-activedescendant`+option ids,
+  reduced-motion jump). Documented as local mods 5-6 in the header.
+- `components/WheelNav.tsx` (NEW): orchestrator. IntersectionObserver (band `-45% 0 -45% 0`) is the
+  sole authority on current section; `programmaticScrollRef` guards it during click-scrolls
+  (cleared on `scrollend` + 700ms fallback). Fixed-height `100dvh` sticky rail, `hidden md:flex`.
+- `components/MobileNav.tsx` (NEW): bottom tab bar for `<md` (also the accessible text fallback,
+  owner Q4). `AccountBlock` lifted to `bottom-16` at `<md` (`md:bottom-4`) so they don't collide.
+- `app/page.tsx`: renders WheelNav + MobileNav; **old `Sidebar` removed** and `Sidebar.tsx` deleted
+  (final swap done only after the wheel passed verification alongside it, per brief §7).
+- **Owner Q3 resolved:** all 8 sections stay top-level — legible with no clipping after tuning
+  (`w-64` rail, `tilt=4 curve=0.5 inset=40 fontSize=1.3`). Not folding Pomodoro.
+- **Verified live via headless Chrome against a temporary `/wheel-preview` harness** (deleted before
+  commit): scroll→wheel rotates to correct section; click→page smooth-scrolls; **NO feedback loop**
+  (rapid scroll→click→scroll settled stable, 4 identical samples); Home/End/Arrows correct;
+  focus-visible ring renders (outlineStyle solid, 2px, #c026d3) on real Tab; reduced-motion jumps
+  (--ow-p=1 after 120ms); mobile 375px no horizontal scroll, wheel hidden, tab bar present.
+  lint + build + 108 tests all green.
+- **Found (pre-existing, logged to FUTURE.md, NOT fixed here):** the app-wide
+  `focus-visible:outline-2` pattern renders no ring in Tailwind v4 without `outline-solid`. The
+  wheel is fixed; the same one-class fix is needed on other controls in a future polish pass.
+- **Still owner-gated:** the authed live check (real session: scroll/click the wheel in-app, Sign
+  out reachable at 375px above the tab bar) and Vercel deploy confirmation.
 
 ---
 

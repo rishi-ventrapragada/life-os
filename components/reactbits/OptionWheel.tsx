@@ -33,8 +33,24 @@
  *      `immutability` rule rejects ("accessed before it is declared"). Now it schedules through
  *      `runFrameRef.current`, kept in sync with `runFrame` via an effect. Behaviour-identical.
  *
- * NOTE: the two-way-sync controlled path and the accessibility additions (focus-visible ring,
- * Enter/Space/Home/End, aria-activedescendant, reduced-motion) are Commit 3, not done here.
+ * Local modifications (SESSION_14, Commit 3 — wiring the wheel as a controlled scroll indicator):
+ *   5. Controlled `value` path (two-way sync). Upstream is internal-state only (`defaultSelected`
+ *      seeds once; no way to push selection in). Added an optional `value?: number` prop whose effect
+ *      SILENTLY syncs the wheel to that index — it sets targetRef/selectedRef/selectedIndex and
+ *      restarts the loop but DELIBERATELY does NOT call `onChange`. This is what breaks the
+ *      scroll→wheel→onChange→scroll feedback loop: an externally-pushed value rotates the wheel
+ *      without re-emitting a navigation event. Early-returns when value already matches.
+ *   6. Accessibility additions:
+ *        a. focus-visible ring on the root (was `outline-none`) using --color-accent-edge, matching
+ *           .glow-card:focus-visible. Transform/opacity/token-colour only.
+ *        b. keyboard: added Enter/Space (activate current section), Home (first), End (last) to the
+ *           existing Arrow handling. Enter/Space go through the same snap path a click uses, so they
+ *           emit onChange (real navigation) — unlike the silent `value` sync.
+ *        c. `aria-activedescendant` on the root listbox + stable `id` per option, so assistive tech
+ *           announces selection changes (not just the visual highlight).
+ *        d. reduced-motion: when prefers-reduced-motion is set, the eased rAF is skipped and the wheel
+ *           jumps straight to target. (Page scrolling already honours reduced-motion via the CSS
+ *           `scroll-behavior` override in globals.css, so scroll callers need no behavior arg.)
  */
 
 import { useRef, useState, useCallback, useEffect, useLayoutEffect, CSSProperties } from 'react';
@@ -44,6 +60,12 @@ type Side = 'left' | 'right';
 export interface OptionWheelProps {
   items?: string[];
   defaultSelected?: number;
+  /**
+   * Local mod 5: controlled index. When provided, the wheel silently syncs to it (no onChange
+   * emitted). Lets a parent drive the wheel from an external source of truth (e.g. scroll position)
+   * without creating a feedback loop.
+   */
+  value?: number;
   onChange?: (index: number, item: string) => void;
   textColor?: string;
   activeColor?: string;
@@ -99,6 +121,7 @@ const DEFAULT_ITEMS = [
 const OptionWheel = ({
   items = DEFAULT_ITEMS,
   defaultSelected = 3,
+  value,
   onChange,
   textColor = '#a6a6a6',
   activeColor = '#ffffff',
@@ -135,6 +158,8 @@ const OptionWheel = ({
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlRef = useRef('');
   const lastTickRef = useRef(0);
+  // Local mod 6d: current prefers-reduced-motion state, read in the rAF loop to jump instead of ease.
+  const reducedMotionRef = useRef(false);
   const [selectedIndex, setSelectedIndex] = useState(defaultSelected);
   const [isDragging, setIsDragging] = useState(false);
   // Local mod 2a: read getComputedStyle out of the render body via a lazy useState initializer,
@@ -179,7 +204,8 @@ const OptionWheel = ({
     lastRef.current = now;
     const cfg = cfgRef.current;
     const tau = Math.max(cfg.smoothing, 1) / 1000;
-    const k = 1 - Math.exp(-dt / tau);
+    // Local mod 6d: jump straight to target under prefers-reduced-motion (k = 1), else ease.
+    const k = reducedMotionRef.current ? 1 : 1 - Math.exp(-dt / tau);
 
     const target = targetRef.current;
     const cur = posRef.current;
@@ -271,6 +297,22 @@ const OptionWheel = ({
     [startLoop, playTick]
   );
 
+  // Local mod 5: silent external sync. Rotates the wheel to `idx` WITHOUT firing onChange, so a
+  // parent driving the wheel from an outside source of truth (scroll position) cannot bounce the
+  // update back out as a navigation event. Early-returns when already there.
+  const syncToValue = useCallback(
+    (idx: number) => {
+      const cfg = cfgRef.current;
+      const clamped = Math.min(Math.max(idx, 0), Math.max(cfg.count - 1, 0));
+      if (clamped === selectedRef.current) return;
+      targetRef.current = clamped;
+      selectedRef.current = clamped;
+      setSelectedIndex(clamped);
+      startLoop();
+    },
+    [startLoop]
+  );
+
   const handlePointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     if (!cfgRef.current.draggable) return;
     dragRef.current = { y: e.clientY, start: targetRef.current, id: e.pointerId };
@@ -318,6 +360,25 @@ const OptionWheel = ({
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>) => {
+      const cfg = cfgRef.current;
+      // Local mod 6b: Enter/Space activate the current section (re-affirm the selection so onChange
+      // fires even if the wheel is already parked there); Home/End jump to first/last.
+      if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+        e.preventDefault();
+        const idx = ((Math.round(targetRef.current) % cfg.count) + cfg.count) % cfg.count;
+        onChangeRef.current?.(idx, cfg.items[idx]);
+        return;
+      }
+      if (e.key === 'Home') {
+        e.preventDefault();
+        applyTarget(0, true);
+        return;
+      }
+      if (e.key === 'End') {
+        e.preventDefault();
+        applyTarget(Math.max(cfg.count - 1, 0), true);
+        return;
+      }
       let delta: number | null = null;
       if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') delta = -1;
       else if (e.key === 'ArrowDown' || e.key === 'ArrowRight') delta = 1;
@@ -331,6 +392,24 @@ const OptionWheel = ({
   useEffect(() => {
     applyTarget(targetRef.current, false);
   }, [items, fontSize, spacing, curve, tilt, blur, fade, minOpacity, side, loop, smoothing, remPx, applyTarget]);
+
+  // Local mod 5: push the controlled `value` into the wheel silently (no onChange).
+  useEffect(() => {
+    if (value == null) return;
+    syncToValue(value);
+  }, [value, syncToValue]);
+
+  // Local mod 6d: track prefers-reduced-motion so the rAF loop can jump instead of ease.
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    reducedMotionRef.current = mq.matches;
+    const onChange = () => {
+      reducedMotionRef.current = mq.matches;
+    };
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
 
   useEffect(
     () => () => {
@@ -346,7 +425,8 @@ const OptionWheel = ({
       role="listbox"
       tabIndex={0}
       aria-label="Option wheel"
-      className={`relative h-full w-full select-none overflow-hidden outline-none [touch-action:none] ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}${className ? ` ${className}` : ''}`}
+      aria-activedescendant={`ow-opt-${selectedIndex}`}
+      className={`relative h-full w-full select-none overflow-hidden outline-none focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-accent-edge) [touch-action:none] ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}${className ? ` ${className}` : ''}`}
       style={
         {
           '--ow-text-color': textColor,
@@ -364,6 +444,7 @@ const OptionWheel = ({
       {items.map((label, index) => (
         <div
           key={`${label}-${index}`}
+          id={`ow-opt-${index}`}
           ref={el => {
             itemRefs.current[index] = el;
           }}

@@ -18,7 +18,7 @@ export default function AccountBlock() {
   if (!session) return null;
 
   return (
-    <div className="fixed bottom-4 left-4 z-40 w-[min(16rem,calc(100vw-2rem))] rounded-xl border border-(--color-border) bg-(--color-surface)/95 px-4 py-3 backdrop-blur-sm">
+    <div className="fixed bottom-16 left-4 z-40 w-[min(16rem,calc(100vw-2rem))] rounded-xl border border-(--color-border) bg-(--color-surface)/95 px-4 py-3 backdrop-blur-sm md:bottom-4">
       <p
         className="truncate text-xs text-(--color-text-muted)"
         title={session.user.email ?? undefined}
