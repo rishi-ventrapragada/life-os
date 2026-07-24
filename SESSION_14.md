@@ -6,17 +6,21 @@ This file is the single source of truth for resuming SESSION_14. The build brief
 `SESSION_14_BRIEF.md` (the spec — read it too). This file records what has been **decided,
 diagnosed, and planned** so a future session can start cold without re-deriving anything.
 
-Status as of this checkpoint: **Planning complete and owner-approved. No code written yet.**
+Status as of this checkpoint: **Commit 1 SHIPPED (`004edf4`). Commit 2 blocked on source. Commit 3 not started.**
 
 ---
 
 ## RESUME-HERE (read this first)
 
-- **Where we are:** Plan Mode finished. All four §2 pre-flight decisions and all four §10 open
-  questions are **resolved by the owner** (see "Owner decisions" below). Commit 1 is fully
-  planned and ready to build. No files have been changed yet.
-- **What to do next:** Start **Commit 1** (mobile sign-in/out fix). It is independent and ships
-  regardless of the wheel. Full step-by-step is in "Commit 1" below.
+- **Where we are:** Plan Mode finished; all four §2 pre-flight decisions and all four §10 open
+  questions **resolved by the owner** (see "Owner decisions"). **Commit 1 is built, committed, and
+  pushed** (`004edf4` on `main`) — gates all green (lint clean, 108 tests, build OK), 375px + desktop
+  layout reachability verified via headless Chrome. The only unverified item is the owner-gated
+  live check (Sign out actually signing out from a real session behind the login screen) — do that
+  in-app when convenient.
+- **What to do next:** **Commit 2** (vendor `OptionWheel.tsx`) — but it is **BLOCKED**: paste/provide
+  the captured React Bits OptionWheel source (Manual / TS-TW copy) first. Do not fabricate it. Once
+  provided, follow "Commit 2" below; enter Plan Mode before coding (project law).
 - **Approved plan file:** `C:\Users\iicra\.claude\plans\mellow-watching-perlis.md` (same content
   as the Commit sections here).
 - **Blocker for Commit 2 only:** the captured React Bits OptionWheel source is **not yet in the
