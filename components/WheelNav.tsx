@@ -117,11 +117,11 @@ export default function WheelNav() {
           fade={0.14}
           minOpacity={0.25}
           spacing={1.5}
-          fontSize={1.3}
-          tilt={4}
-          curve={0.5}
+          fontSize={1.9}
+          tilt={0}
+          curve={0}
           smoothing={200}
-          inset={40}
+          inset={28}
           side="left"
           loop={false}
           draggable={false}
