@@ -1,6 +1,7 @@
 import SessionProvider from "@/components/auth/SessionProvider";
 import AuthGate from "@/components/auth/AuthGate";
 import Sidebar from "@/components/Sidebar";
+import AccountBlock from "@/components/AccountBlock";
 import TodaySection from "@/components/sections/TodaySection";
 import GoalsSection from "@/components/sections/GoalsSection";
 import HabitsSection from "@/components/sections/HabitsSection";
@@ -16,7 +17,7 @@ export default function Home() {
       <AuthGate>
         <div className="flex flex-1">
           <Sidebar />
-          <main className="min-w-0 flex-1 px-4 py-10 sm:px-8 sm:py-16">
+          <main className="min-w-0 flex-1 px-4 py-10 pb-28 sm:px-8 sm:py-16 sm:pb-28">
             <div className="mx-auto flex w-full max-w-5xl flex-col gap-16 sm:gap-24">
               <TodaySection />
               <GoalsSection />
@@ -29,6 +30,7 @@ export default function Home() {
             </div>
           </main>
         </div>
+        <AccountBlock />
       </AuthGate>
     </SessionProvider>
   );

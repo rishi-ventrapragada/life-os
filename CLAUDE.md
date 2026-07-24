@@ -19,7 +19,7 @@ You are building a personal life-tracking web app for a beginner developer who r
 2. Build vertical slices: a feature's UI and its Supabase wiring ship together in the same step.
 3. ALL date logic goes through `lib/dates.ts` → `getTodayIST()` (calendar date in Asia/Kolkata). Never use raw `new Date()` date-strings, never UTC dates, never build custom clocks/counters. Habit checks, streaks, journal days, and due-date comparisons all use IST dates.
 4. Every table has `user_id` with Row Level Security: owner reads/writes own rows only. No exceptions, including "temporary" tables.
-5. Layouts use flex/grid with fluid sizing. No fixed pixel widths on containers. Desktop-first, responsive-friendly.
+5. Layouts use flex/grid with fluid sizing. No fixed pixel widths on containers. Desktop-first, responsive-friendly. Every interactive control remains reachable and operable at 375px — a control hidden with its parent (e.g. inside a `hidden md:*` sidebar) is a defect even when nothing overflows.
 
 ## Security
 - SECURITY.md is law. Its checklist items are part of every step's Definition of Done at the stage they apply to.

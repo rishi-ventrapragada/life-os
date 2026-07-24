@@ -1,8 +1,3 @@
-"use client";
-
-import { useSession } from "@/components/auth/SessionProvider";
-import { supabase } from "@/lib/supabase";
-
 const links = [
   { id: "today", label: "Today" },
   { id: "goals", label: "Goals" },
@@ -15,8 +10,6 @@ const links = [
 ];
 
 export default function Sidebar() {
-  const { session } = useSession();
-
   return (
     <aside className="hidden md:block w-56 shrink-0">
       <nav
@@ -42,24 +35,6 @@ export default function Sidebar() {
             </li>
           ))}
         </ul>
-
-        {session && (
-          <div className="mt-4 border-t border-(--color-border) px-3 pt-4">
-            <p
-              className="truncate text-xs text-(--color-text-muted)"
-              title={session.user.email ?? undefined}
-            >
-              {session.user.email}
-            </p>
-            <button
-              type="button"
-              onClick={() => void supabase.auth.signOut()}
-              className="mt-2 rounded-md text-sm text-(--color-text-muted) transition-opacity duration-150 hover:text-(--color-text) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-accent-edge) active:opacity-60"
-            >
-              Sign out
-            </button>
-          </div>
-        )}
       </nav>
     </aside>
   );
