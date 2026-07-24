@@ -101,11 +101,14 @@ export default function WheelNav() {
   );
 
   return (
-    <aside className="hidden md:flex sticky top-0 h-[100dvh] w-64 shrink-0 flex-col">
+    <aside className="hidden md:flex sticky top-0 h-[100dvh] w-64 shrink-0 flex-col pb-24">
       <p className="mt-8 pl-8 font-display text-xs uppercase tracking-[0.2em] text-(--color-text-muted)">
         Life OS
       </p>
-      <div className="relative min-h-0 flex-1">
+      {/* The wheel occupies the band between the wordmark above and the fixed AccountBlock below
+          (the aside's pb-24 keeps flex-1 clear of it). A soft top/bottom mask dissolves items at the
+          edges instead of hard-clipping against OptionWheel's own overflow-hidden root. */}
+      <div className="relative min-h-0 flex-1 [mask-image:linear-gradient(to_bottom,transparent,black_12%,black_88%,transparent)] [-webkit-mask-image:linear-gradient(to_bottom,transparent,black_12%,black_88%,transparent)]">
         <OptionWheel
           items={LABELS}
           value={activeIndex}
@@ -114,8 +117,8 @@ export default function WheelNav() {
           blur={0}
           textColor="#b7a4f5"
           activeColor="#fafafa"
-          fade={0.14}
-          minOpacity={0.25}
+          fade={0.25}
+          minOpacity={0}
           spacing={1.5}
           fontSize={1.9}
           tilt={0}

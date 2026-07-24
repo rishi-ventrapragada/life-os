@@ -51,6 +51,23 @@
  *        d. reduced-motion: when prefers-reduced-motion is set, the eased rAF is skipped and the wheel
  *           jumps straight to target. (Page scrolling already honours reduced-motion via the CSS
  *           `scroll-behavior` override in globals.css, so scroll callers need no behavior arg.)
+ *
+ * Local modifications (sidebar-wheel refinements — fade / band / selected-larger):
+ *   7. Three refinements, all inside the existing per-frame `runFrame` item loop (no new system):
+ *        a. Selected-item enlargement via transform `scale(1 + p*SELECTED_SCALE)` appended to the
+ *           SAME transform string (p is the existing closeness ramp, 1 at centre → 0 by distance 1).
+ *           Deliberately NOT font-size: font-size animation forces layout every frame and would
+ *           break the project's transform/opacity-only law. `origin-left` (already set on the item)
+ *           makes it grow rightward. SELECTED_SCALE is a module const so it is owner-tunable in one
+ *           place (0.25 / 0.35 / 0.45). The existing font-extralight -> font-medium weight switch is
+ *           kept as-is.
+ *        b. Inert-when-invisible: once an item's computed opacity <= 0.01 (which now reaches true 0,
+ *           since the WheelNav caller passes minOpacity:0), it is given `pointer-events:none` and
+ *           `aria-hidden="true"` so far items are neither clickable nor exposed to screen readers.
+ *           Both are cleared per-frame as the item scrolls back toward centre. Written through the
+ *           same per-frame style write, not a separate observer.
+ *      (The fade curve itself (fade/minOpacity) is set purely via props from WheelNav — no code
+ *      change here; `1 - dist*fade` floored at `minOpacity` already existed.)
  */
 
 import { useRef, useState, useCallback, useEffect, useLayoutEffect, CSSProperties } from 'react';
@@ -102,6 +119,11 @@ interface WheelConfig {
   soundUrl: string;
   soundVolume: number;
 }
+
+// Local mod 7: how much larger the selected item renders, as a fraction, applied via transform
+// scale (NOT font-size). Selected = 1 + SELECTED_SCALE (e.g. 0.35 → 1.35x); distance >= 1 stays 1.0
+// and it interpolates smoothly between. Owner-tunable — try 0.25 / 0.35 / 0.45.
+const SELECTED_SCALE = 0.35;
 
 const DEFAULT_ITEMS = [
   'Ambient',
@@ -239,10 +261,22 @@ const OptionWheel = ({
         x = -mirror * R * (1 - Math.cos(ang)) * cfg.curve;
         rot = (mirror * ang * 180) / Math.PI;
       }
-      el.style.transform = `translate(${x.toFixed(2)}px, calc(${y.toFixed(2)}px - 50%)) rotate(${rot.toFixed(3)}deg)`;
-      el.style.opacity = String(Math.max(cfg.minOpacity, 1 - dist * cfg.fade));
+      // Local mod 7: closeness ramp p (1 at the selected item, 0 by distance >= 1). Drives both the
+      // active-colour blend (--ow-p) and the selected-item enlargement (scale, appended to the SAME
+      // transform string so we stay transform/opacity-only — no per-frame font-size / layout).
+      const p = Math.max(0, 1 - Math.min(dist, 1));
+      const scale = 1 + p * SELECTED_SCALE;
+      el.style.transform = `translate(${x.toFixed(2)}px, calc(${y.toFixed(2)}px - 50%)) rotate(${rot.toFixed(3)}deg) scale(${scale.toFixed(4)})`;
+      const op = Math.max(cfg.minOpacity, 1 - dist * cfg.fade);
+      el.style.opacity = String(op);
       el.style.filter = cfg.blur > 0 ? `blur(${(dist * cfg.blur).toFixed(2)}px)` : 'none';
-      el.style.setProperty('--ow-p', Math.max(0, 1 - Math.min(dist, 1)).toFixed(4));
+      el.style.setProperty('--ow-p', p.toFixed(4));
+      // Local mod 7: once effectively invisible, make the item inert — drop it from hit-testing and
+      // the a11y tree. Cleared as it scrolls back toward centre and op rises above the threshold.
+      // Done here in the existing per-frame write, not via a separate observer.
+      const inert = op <= 0.01;
+      el.style.pointerEvents = inert ? 'none' : '';
+      el.setAttribute('aria-hidden', inert ? 'true' : 'false');
     }
 
     rafRef.current = settled ? null : requestAnimationFrame(runFrameRef.current);
