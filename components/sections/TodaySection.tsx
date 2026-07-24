@@ -2,6 +2,7 @@
 
 import GlowCard from "@/components/GlowCard";
 import SectionHeader from "@/components/SectionHeader";
+import Reveal from "@/components/Reveal";
 import TodayDate from "@/components/today/TodayDate";
 import TodayHabits from "@/components/today/TodayHabits";
 import TodayTasks from "@/components/today/TodayTasks";
@@ -38,7 +39,7 @@ export default function TodaySection() {
         <ExportButton />
       </div>
 
-      <div className="mt-6">
+      <Reveal className="mt-6">
         <GlowCard glow="strong" className="flex flex-col gap-8">
           <div className="flex flex-col gap-3">
             <TodayDate />
@@ -97,7 +98,7 @@ export default function TodaySection() {
             <TodayJournalLine />
           </div>
         </GlowCard>
-      </div>
+      </Reveal>
     </section>
   );
 }

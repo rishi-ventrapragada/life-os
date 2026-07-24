@@ -3,6 +3,7 @@
 import { useState } from "react";
 import GlowCard from "@/components/GlowCard";
 import SectionHeader from "@/components/SectionHeader";
+import Reveal from "@/components/Reveal";
 import GoalCard from "@/components/goals/GoalCard";
 import GoalForm from "@/components/goals/GoalForm";
 import { useGoals } from "@/components/goals/useGoals";
@@ -33,7 +34,7 @@ export default function GoalsSection() {
         )}
       </div>
 
-      <div className="mt-6 flex flex-col gap-4">
+      <Reveal className="mt-6 flex flex-col gap-4">
         {error && (
           <p role="alert" className="text-sm text-red-400">
             {error}
@@ -81,7 +82,7 @@ export default function GoalsSection() {
             )}
           </div>
         )}
-      </div>
+      </Reveal>
     </section>
   );
 }

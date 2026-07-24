@@ -3,6 +3,7 @@
 import { useState } from "react";
 import GlowCard from "@/components/GlowCard";
 import SectionHeader from "@/components/SectionHeader";
+import Reveal from "@/components/Reveal";
 import SplitForm from "@/components/fitness/SplitForm";
 import WeeklySplit from "@/components/fitness/WeeklySplit";
 import LogForm from "@/components/fitness/LogForm";
@@ -51,7 +52,7 @@ export default function FitnessSection() {
       <SectionHeader eyebrow="Training" title="Fitness" />
 
       {/* Weekly split */}
-      <div className="flex flex-col gap-4">
+      <Reveal index={0} className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 className={subheading}>Weekly split</h3>
           {!addingSlot && !editingSlot && (
@@ -73,10 +74,10 @@ export default function FitnessSection() {
         ) : (
           <WeeklySplit slots={split.slots} onEdit={(s) => setEditingSlot(s)} onDelete={(s) => split.deleteSlot(s.id)} />
         )}
-      </div>
+      </Reveal>
 
       {/* Workout log */}
-      <div className="flex flex-col gap-4">
+      <Reveal index={1} className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 className={subheading}>Workout log</h3>
           {!addingLog && !editingLog && (
@@ -104,7 +105,7 @@ export default function FitnessSection() {
             onDelete={(l) => log.deleteLog(l.id)}
           />
         )}
-      </div>
+      </Reveal>
     </section>
   );
 }

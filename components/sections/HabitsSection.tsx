@@ -3,6 +3,7 @@
 import { useState } from "react";
 import GlowCard from "@/components/GlowCard";
 import SectionHeader from "@/components/SectionHeader";
+import Reveal from "@/components/Reveal";
 import HabitCard from "@/components/habits/HabitCard";
 import HabitForm from "@/components/habits/HabitForm";
 import { useHabits } from "@/components/habits/useHabits";
@@ -49,7 +50,7 @@ export default function HabitsSection() {
         )}
       </div>
 
-      <div className="mt-6 flex flex-col gap-4">
+      <Reveal className="mt-6 flex flex-col gap-4">
         {error && (
           <p role="alert" className="text-sm text-red-400">
             {error}
@@ -93,7 +94,7 @@ export default function HabitsSection() {
             )}
           </div>
         )}
-      </div>
+      </Reveal>
     </section>
   );
 }

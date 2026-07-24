@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import GlowCard from "@/components/GlowCard";
 import SectionHeader from "@/components/SectionHeader";
+import Reveal from "@/components/Reveal";
 import CourseCard from "@/components/academics/CourseCard";
 import CourseForm from "@/components/academics/CourseForm";
 import AssignmentForm from "@/components/academics/AssignmentForm";
@@ -79,7 +80,7 @@ export default function AcademicsSection() {
       <SectionHeader eyebrow="Courses and deadlines" title="Academics" />
 
       {/* Courses */}
-      <div className="flex flex-col gap-4">
+      <Reveal index={0} className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 className={subheading}>Courses</h3>
           {!addingCourse && (
@@ -113,11 +114,11 @@ export default function AcademicsSection() {
             )}
           </div>
         )}
-      </div>
+      </Reveal>
 
       {/* Assignments — only meaningful once a course exists */}
       {hasCourses && (
-        <div className="flex flex-col gap-4">
+        <Reveal index={1} className="flex flex-col gap-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h3 className={subheading}>Assignments</h3>
             {!addingAssignment && !editingAssignment && (
@@ -143,11 +144,11 @@ export default function AcademicsSection() {
             onEdit={(a) => setEditingAssignment(a)}
             onDelete={(a) => assignments.deleteAssignment(a.id)}
           />
-        </div>
+        </Reveal>
       )}
 
       {/* Timetable */}
-      <div className="flex flex-col gap-4">
+      <Reveal index={2} className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 className={subheading}>Weekly timetable</h3>
           {!addingSlot && !editingSlot && (
@@ -173,7 +174,7 @@ export default function AcademicsSection() {
             onDelete={(s) => timetable.deleteSlot(s.id)}
           />
         )}
-      </div>
+      </Reveal>
     </section>
   );
 }

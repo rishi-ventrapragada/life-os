@@ -3,6 +3,7 @@
 import { useState } from "react";
 import GlowCard from "@/components/GlowCard";
 import SectionHeader from "@/components/SectionHeader";
+import Reveal from "@/components/Reveal";
 import JournalEntryCard from "@/components/journal/JournalEntryCard";
 import JournalEntryForm from "@/components/journal/JournalEntryForm";
 import { useJournal } from "@/components/journal/useJournal";
@@ -37,7 +38,7 @@ export default function JournalSection() {
         )}
       </div>
 
-      <div className="mt-6 flex flex-col gap-4">
+      <Reveal className="mt-6 flex flex-col gap-4">
         {error && (
           <p role="alert" className="text-sm text-red-400">
             {error}
@@ -87,7 +88,7 @@ export default function JournalSection() {
             ),
           )
         )}
-      </div>
+      </Reveal>
     </section>
   );
 }
