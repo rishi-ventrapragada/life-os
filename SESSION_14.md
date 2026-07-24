@@ -6,21 +6,29 @@ This file is the single source of truth for resuming SESSION_14. The build brief
 `SESSION_14_BRIEF.md` (the spec — read it too). This file records what has been **decided,
 diagnosed, and planned** so a future session can start cold without re-deriving anything.
 
-Status as of this checkpoint: **Commit 1 SHIPPED (`004edf4`). Commit 2 blocked on source. Commit 3 not started.**
+Status as of this checkpoint: **Commits 1 & 2 SHIPPED. Commit 3 (wiring) not started.**
 
 ---
 
 ## RESUME-HERE (read this first)
 
-- **Where we are:** Plan Mode finished; all four §2 pre-flight decisions and all four §10 open
-  questions **resolved by the owner** (see "Owner decisions"). **Commit 1 is built, committed, and
-  pushed** (`004edf4` on `main`) — gates all green (lint clean, 108 tests, build OK), 375px + desktop
-  layout reachability verified via headless Chrome. The only unverified item is the owner-gated
-  live check (Sign out actually signing out from a real session behind the login screen) — do that
-  in-app when convenient.
-- **What to do next:** **Commit 2** (vendor `OptionWheel.tsx`) — but it is **BLOCKED**: paste/provide
-  the captured React Bits OptionWheel source (Manual / TS-TW copy) first. Do not fabricate it. Once
-  provided, follow "Commit 2" below; enter Plan Mode before coding (project law).
+- **Where we are:** all four §2 decisions + §10 questions resolved by the owner (see "Owner
+  decisions"). **Commit 1 SHIPPED** (`004edf4`, `375ac09`) — mobile auth fix, gates green, 375px +
+  desktop layout reachability verified via headless Chrome. **Commit 2 SHIPPED** (`e3b0c05`) —
+  `components/reactbits/OptionWheel.tsx` vendored with 4 documented mods; lint + build + 108 tests
+  all green. The component is NOT rendered anywhere yet.
+- **Commit-2 note — a THIRD source defect was found & fixed (owner-approved):** beyond the two
+  defects the brief named (remPx-in-render, scroll hijack), our react-hooks v7 lint also rejected
+  the upstream self-scheduling rAF (`requestAnimationFrame(runFrame)` referencing runFrame before
+  declaration → `react-hooks/immutability`). Fixed via `runFrameRef.current`, documented as local
+  mod #4 in the file header. Also: the remPx fix landed as a lazy `useState(() => …)` initializer
+  (not a useLayoutEffect — that tripped `set-state-in-effect`).
+- **What to do next:** **Commit 3** — wire the wheel as a scroll-position-indicator nav. Use
+  `fable-mode` (two-way sync / feedback-loop risk, §6.1). Enter Plan Mode before coding. Report the
+  session-meter % first; do NOT begin Commit 3 above ~85% — checkpoint and resume fresh instead.
+  Full detail in "Commit 3" below.
+- **Owner-gated live check still open (Commit 1):** Sign out actually signing out from a real
+  session behind the login screen — confirm in-app when convenient.
 - **Approved plan file:** `C:\Users\iicra\.claude\plans\mellow-watching-perlis.md` (same content
   as the Commit sections here).
 - **Blocker for Commit 2 only:** the captured React Bits OptionWheel source is **not yet in the
