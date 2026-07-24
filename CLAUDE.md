@@ -15,7 +15,7 @@ You are building a personal life-tracking web app for a beginner developer who r
 - Deployed on Vercel via git push. No other services without asking.
 
 ## Architecture laws
-1. The app is ONE scrollable page composed of section components (`components/sections/TodaySection.tsx` etc.). Never build a single giant page file. Keep every component under ~200 lines; propose a split when approaching.
+1. The app is ONE scrollable page composed of section components (`components/sections/TodaySection.tsx` etc.). Never build a single giant page file. Keep every component under ~200 lines; propose a split when approaching. **Exemption:** vendored third-party components under `components/reactbits/` are exempt from the ~200-line law, provided they are edited only per the modifications documented in their own header comment. Do not refactor or reformat vendored code to "fit" — keep the diff from upstream minimal and documented.
 2. Build vertical slices: a feature's UI and its Supabase wiring ship together in the same step.
 3. ALL date logic goes through `lib/dates.ts` → `getTodayIST()` (calendar date in Asia/Kolkata). Never use raw `new Date()` date-strings, never UTC dates, never build custom clocks/counters. Habit checks, streaks, journal days, and due-date comparisons all use IST dates.
 4. Every table has `user_id` with Row Level Security: owner reads/writes own rows only. No exceptions, including "temporary" tables.
