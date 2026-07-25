@@ -28,11 +28,11 @@ export default function Home() {
               <FitnessSection />
               <JournalSection />
               <PomodoroSection />
+              <AccountBlock />
             </div>
           </main>
         </div>
         <MobileNav />
-        <AccountBlock />
       </AuthGate>
     </SessionProvider>
   );

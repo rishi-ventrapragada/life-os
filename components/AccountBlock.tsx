@@ -6,8 +6,14 @@ import { supabase } from "@/lib/supabase";
 /**
  * The account control (signed-in email + Sign out), rendered INDEPENDENTLY of
  * the sidebar so it stays reachable at every width. The sidebar is `hidden
- * md:block`, so anything inside it disappears on mobile — this block lives
- * outside it, fixed bottom-left, and is present at 375px through desktop.
+ * md:block`, so anything inside it disappears on mobile.
+ *
+ * Two layouts, one component:
+ * - < md: `static`, full-width, rendered in the normal page flow at the end of
+ *   the content column (after PomodoroSection) — it scrolls with the page and
+ *   can never overlap the fixed MobileNav bar.
+ * - md+: `fixed` bottom-left, fluidly width-capped with min(), floating over
+ *   the page alongside the wheel nav.
  *
  * Renders nothing when logged out. Width is constrained fluidly (min()), never
  * a fixed pixel container, so it can't cause horizontal scroll at 375px.
@@ -18,7 +24,7 @@ export default function AccountBlock() {
   if (!session) return null;
 
   return (
-    <div className="fixed bottom-16 left-4 z-40 w-[min(16rem,calc(100vw-2rem))] rounded-xl border border-(--color-border) bg-(--color-surface)/95 px-4 py-3 backdrop-blur-sm md:bottom-4">
+    <div className="static w-full rounded-xl border border-(--color-border) bg-(--color-surface)/95 px-4 py-3 backdrop-blur-sm md:fixed md:bottom-4 md:left-4 md:z-40 md:w-[min(16rem,calc(100vw-2rem))]">
       <p
         className="truncate text-xs text-(--color-text-muted)"
         title={session.user.email ?? undefined}

@@ -9,8 +9,8 @@
  * Anchors (`#id`) get smooth scrolling and reduced-motion handling for free from globals.css
  * (`html { scroll-behavior: smooth }` + its prefers-reduced-motion override).
  *
- * Fixed to the bottom. The account block (components/AccountBlock.tsx) is lifted above this bar at
- * < md (its own `bottom` offset) so the two never collide at 375px.
+ * Fixed to the bottom. The account block (components/AccountBlock.tsx) is `static` at < md and sits
+ * in the normal page flow at the end of the content column, so the two never collide at 375px.
  */
 
 const SECTIONS = [
