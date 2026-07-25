@@ -21,6 +21,8 @@ type TaskRow = {
 const SAVE_FAILED =
   "Couldn't save to the database — refresh to see what actually stuck.";
 
+const NOT_READY = "Workspace still setting up — try again in a second.";
+
 function rowToTask(row: TaskRow): Task {
   return {
     id: row.id,
@@ -90,6 +92,11 @@ export function useTasks() {
 
   async function addTask(data: Omit<Task, "id">): Promise<boolean> {
     setError(null);
+    const areaId = areaIds.current[data.area];
+    if (!areaId) {
+      setError(NOT_READY);
+      return false;
+    }
     const { data: row, error: insertError } = await supabase
       .from("tasks")
       .insert(patchToRow(data, areaIds.current))
