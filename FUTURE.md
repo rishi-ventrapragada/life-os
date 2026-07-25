@@ -25,15 +25,13 @@ later arcs do with that data.
 
 *(recorded thinly: PRD header note + §11.2; this entry is the durable statement.)*
 
-Solo Leveling theme: the owner is a low-rank hunter grinding daily quests until
-S-rank. Once v1's manual tracking is a stable habit:
+Once v1's manual tracking is a stable habit:
 
 - **XP** earned from completed habit checks, tasks, and check-in streaks.
-- **Ranks E→S** derived from accumulated XP / consistency, displayed on the
-  dashboard like a hunter license.
+- **Ranks** derived from accumulated XP / consistency, displayed on the
+  dashboard.
 - **Quests**: daily/weekly framing of the existing check-in items ("daily quest:
   all habits checked"), potentially with streak-protection mechanics.
-- **Rewards**: owner-defined, unlocked by rank/XP thresholds.
 - Design intent: computed from the same `habit_checks`/`tasks` rows v1 writes —
   no parallel bookkeeping, no separate "game state" the owner can desync.
 
