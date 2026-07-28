@@ -15,6 +15,7 @@
 
 const SECTIONS = [
   { id: "today", label: "Today" },
+  { id: "analytics", label: "Analytics" },
   { id: "goals", label: "Goals" },
   { id: "habits", label: "Habits" },
   { id: "tasks", label: "Tasks" },

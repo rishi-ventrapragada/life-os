@@ -150,7 +150,7 @@ export default function ConsistencyRadar({ scores }: { scores: AreaConsistency[]
       </defs>
 
       {/* Guide rings: nested pentagons, so they track the shape, not a circle. */}
-      <g stroke="var(--color-border)" fill="none" strokeOpacity="0.7">
+      <g stroke="var(--color-border)" fill="none" strokeOpacity="0.95">
         {RINGS.map((ring) => (
           <polygon
             key={ring}
@@ -165,7 +165,7 @@ export default function ConsistencyRadar({ scores }: { scores: AreaConsistency[]
       </g>
 
       {/* Axis lines, centre to each vertex. */}
-      <g stroke="var(--color-border)" strokeOpacity="0.55" strokeWidth="1">
+      <g stroke="var(--color-border)" strokeOpacity="0.8" strokeWidth="1">
         {scores.map((score, i) => {
           const tip = vertex(i, count, RADIUS);
           return <line key={score.area} x1={CX} y1={CY} x2={tip.x} y2={tip.y} />;
