@@ -246,3 +246,34 @@ body {
     transition-property: none;
   }
 }
+
+/* Radar plot reveal (components/dashboard/ConsistencyRadar.tsx): the plotted polygon scales up
+   from the pentagon centre and fades in, once, when scrolled into view. Transform + opacity only —
+   never the SVG geometry, stroke-dashoffset or fill. Same duration/easing as .reveal so the chart
+   settles with the same feel as every other block; no delay, since it is one shape, not a stagger.
+
+   transform-box: view-box is load-bearing. The default (fill-box) resolves transform-origin against
+   the group's own bounding box, so a lopsided plot — one non-zero area, say — would scale from the
+   middle of that sliver instead of the pentagon centre. The component pairs this with an explicit
+   pixel transform-origin at the centre. */
+.radar-plot {
+  opacity: 0;
+  transform: scale(0.6);
+  transition-property: opacity, transform;
+  transition-duration: 600ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: opacity, transform;
+}
+
+.radar-plot-in {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .radar-plot {
+    opacity: 1;
+    transform: none;
+    transition-property: none;
+  }
+}
