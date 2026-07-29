@@ -1,6 +1,10 @@
 @import "tailwindcss";
 
-@theme {
+/* `static` so Tailwind emits every token below even when nothing references it
+   yet. Without it v4 tree-shakes unused @theme variables, and the starfield
+   tokens (added ahead of the component that consumes them) resolve to empty
+   strings at runtime. */
+@theme static {
   /* Surfaces — near-black with a violet undertone */
   --color-bg: #08070c;
   --color-surface: #0f0e15;
@@ -25,6 +29,18 @@
   /* Lavender for accent-tinted text on dark surfaces (pills, labels) —
      the accent itself is too dark to read as text on the near-black bg. */
   --color-accent-soft: #b7a4f5;
+  /* Channel triplet of the colour above, same hex/rgb pairing as the accents
+     and subject to the same KEEP IN SYNC rule. Needed because the starfield
+     tints stars with a per-star alpha, and rgb() cannot read alpha out of a
+     hex string. */
+  --color-accent-soft-rgb: 183 164 245;
+
+  /* Far starfield layer: one step lighter and less saturated than
+     --color-accent-soft, per the parallax design's depth ramp. DERIVED rather
+     than declared per theme — it follows whatever --color-accent-soft each
+     theme sets, so mono and crimson get a correct far tint with no extra
+     declarations and no fourth pair to keep in sync. */
+  --color-star-far: color-mix(in srgb, var(--color-accent-soft) 72%, #fafafa);
 
   /* Type */
   --font-display: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
@@ -160,6 +176,7 @@ body {
   --color-accent-edge: #f2f2f7; /* near-white edge */
   --color-accent-edge-rgb: 242 242 247;
   --color-accent-soft: #c9c9d4; /* light grey for accent text/labels */
+  --color-accent-soft-rgb: 201 201 212;
 }
 
 /* Silver reads brighter than amethyst at the same alpha, so mono re-tunes the
@@ -222,6 +239,7 @@ body {
   --color-accent-edge: #911833; /* brighter crimson edge */
   --color-accent-edge-rgb: 145 24 51;
   --color-accent-soft: #e79aa6; /* rose for accent text/labels */
+  --color-accent-soft-rgb: 231 154 166;
 }
 
 /* Crimson is far darker than amethyst or silver, so it needs noticeably HIGHER
