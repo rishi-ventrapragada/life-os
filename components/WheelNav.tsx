@@ -116,8 +116,8 @@ export default function WheelNav() {
           defaultSelected={0}
           onChange={handleWheelChange}
           blur={0}
-          textColor="#b7a4f5"
-          activeColor="#fafafa"
+          textColor="var(--color-accent-soft)"
+          activeColor="var(--color-text)"
           fade={0.25}
           minOpacity={0}
           spacing={1.5}
