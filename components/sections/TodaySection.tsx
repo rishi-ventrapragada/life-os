@@ -9,6 +9,7 @@ import TodayTasks from "@/components/today/TodayTasks";
 import TodayJournalLine from "@/components/today/TodayJournalLine";
 import WeekProgress from "@/components/today/WeekProgress";
 import ExportButton from "@/components/today/ExportButton";
+import ThemeMenu from "@/components/ThemeMenu";
 import { useHabits } from "@/components/habits/useHabits";
 import { useTasks } from "@/components/tasks/useTasks";
 import { getTodayIST } from "@/lib/dates";
@@ -36,7 +37,12 @@ export default function TodaySection() {
     <section id="today" className="scroll-mt-8">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <SectionHeader eyebrow="Daily check-in" title="Today" />
-        <ExportButton />
+        {/* Right-aligned stack: theme control above Export, so the header on the
+            left keeps its position and both controls stay reachable at 375px. */}
+        <div className="flex flex-col items-end gap-2">
+          <ThemeMenu />
+          <ExportButton />
+        </div>
       </div>
 
       <Reveal className="mt-6">
