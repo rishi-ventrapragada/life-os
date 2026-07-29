@@ -17,7 +17,9 @@ export default function Home() {
   return (
     <SessionProvider>
       <AuthGate>
-        <div className="flex flex-1">
+        {/* relative z-10 lifts the app above the fixed StarField, which sits at
+            z-0 (it cannot go negative — body paints --color-bg over it). */}
+        <div className="relative z-10 flex flex-1">
           <WheelNav />
           <main className="min-w-0 flex-1 px-4 py-10 pb-28 sm:px-8 sm:py-16 sm:pb-28">
             <div className="mx-auto flex w-full max-w-5xl flex-col gap-16 sm:gap-24">

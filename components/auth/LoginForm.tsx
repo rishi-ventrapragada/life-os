@@ -60,7 +60,9 @@ export default function LoginForm() {
   }
 
   return (
-    <div className="flex flex-1 items-center justify-center px-6 py-16">
+    // relative z-10 keeps the login card above the fixed StarField at z-0 —
+    // the gate renders this instead of the page, so it needs its own lift.
+    <div className="relative z-10 flex flex-1 items-center justify-center px-6 py-16">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
           <p className="font-display text-xs uppercase tracking-[0.2em] text-(--color-text-muted)">

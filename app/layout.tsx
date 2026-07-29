@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Space_Grotesk } from "next/font/google";
+import StarField from "@/components/StarField";
 import "./globals.css";
 
 const spaceGrotesk = Space_Grotesk({
@@ -57,7 +58,13 @@ export default function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {/* First child so it paints behind everything. Fixed + pointer-events:
+            none, so it neither scrolls nor intercepts clicks; content above it
+            carries z-10. */}
+        <StarField />
+        {children}
+      </body>
     </html>
   );
 }

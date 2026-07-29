@@ -375,6 +375,71 @@ body {
   }
 }
 
+/* Star field (components/StarField.tsx) — the app-wide parallax background.
+
+   FIXED, not absolute: the app is one long scrolling page, so an absolutely
+   positioned field would scroll away and stretch the document. Fixed keeps it
+   viewport-locked, adds no document height and cannot cause horizontal overflow.
+
+   z-index 0, NOT -1: body paints --color-bg, which would cover a negative
+   layer entirely. Page content is lifted to z-10 above this instead.
+
+   pointer-events: none makes the whole field click-transparent. It has no
+   interactive descendants, so nothing inside can ever swallow a click.
+
+   contain: strict isolates layout, paint and style — the field has fixed
+   dimensions and no interactive content, so it can never trigger reflow in the
+   app above it.
+
+   Increment 2 is static; the drift and its keyframes arrive in increment 3. */
+.starfield {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  contain: strict;
+}
+
+.starfield-layer {
+  position: absolute;
+  inset: 0;
+}
+
+/* Depth tints. Near stays white-dominant (--color-text) on purpose: the field
+   must read as starlight, and tinting it accent-coloured would put the
+   background in the same signal channel as the card borders, which would stop
+   the card outline being the brightest accent on screen. Mid and far use the
+   accent-soft ramp, so all three retint per data-theme with no extra rules. */
+.starfield-layer[data-layer="near"] {
+  --star: var(--color-text);
+}
+
+.starfield-layer[data-layer="mid"] {
+  --star: var(--color-accent-soft);
+}
+
+.starfield-layer[data-layer="far"] {
+  --star: var(--color-star-far);
+}
+
+.starfield-star {
+  position: absolute;
+  border-radius: 9999px;
+  background-color: var(--star);
+}
+
+/* Stars 2px and up carry a static bloom so the field has a little depth. This
+   is the reason --color-accent-soft-rgb exists: box-shadow needs a per-layer
+   alpha, and rgb() cannot read alpha out of a hex string. Never animated.
+
+   Keyed off an explicit data-bloom attribute rather than matching the inline
+   style string, which would silently stop working if React changed how it
+   serialises styles. */
+.starfield-star[data-bloom] {
+  box-shadow: 0 0 var(--bloom-blur, 4px) 0 rgb(var(--color-accent-soft-rgb) / 0.5);
+}
+
 /* Reveal — scroll-in for center content blocks (components/Reveal.tsx).
    Pre-reveal state occupies its normal layout box (transform/opacity don't affect layout), so the
    wheel's section observer never sees a box shift. Animate transform + opacity only; never
