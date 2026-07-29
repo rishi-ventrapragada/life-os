@@ -411,9 +411,37 @@ body {
   contain: strict;
 }
 
+/* Each layer is 200% wide holding the field twice, and slides exactly -50%. At
+   the end of the cycle the second copy sits where the first began, so the loop
+   point is invisible and no JS is involved. linear is mandatory: any easing
+   would make the wrap visibly stutter.
+
+   Transform only — the animation law. Nothing here animates position, width,
+   box-shadow, filter or background. --dur comes from LAYERS in
+   lib/starfield.ts, so the durations have one source of truth. */
+@keyframes starfield-slide {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
 .starfield-layer {
   position: absolute;
   inset: 0;
+  width: 200%;
+  animation: starfield-slide var(--dur) linear infinite;
+}
+
+/* will-change on the two faster layers only. Each hint permanently promotes a
+   full-viewport compositor layer — real GPU memory on a large display — and the
+   far layer moves about a pixel every four seconds, so promoting it buys no
+   smoothness for that cost. */
+.starfield-layer[data-layer="near"],
+.starfield-layer[data-layer="mid"] {
+  will-change: transform;
 }
 
 /* Depth tints. Near stays white-dominant (--color-text) on purpose: the field
@@ -448,6 +476,17 @@ body {
    serialises styles. */
 .starfield-star[data-bloom] {
   box-shadow: 0 0 var(--bloom-blur, 4px) 0 rgb(var(--color-accent-soft-rgb) / 0.5);
+}
+
+/* Reduced motion: hold the drift at its start position, where both copies are
+   in place and the field is a complete static sky. Deliberately scoped to
+   .starfield-layer rather than a blanket `*` rule — .reveal and .glow-card
+   already carry their own tuned reduced-motion handling, and a global override
+   would trample it. Increment 5 refines this into the full static fallback. */
+@media (prefers-reduced-motion: reduce) {
+  .starfield-layer {
+    animation: none;
+  }
 }
 
 /* Reveal — scroll-in for center content blocks (components/Reveal.tsx).
