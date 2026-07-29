@@ -143,6 +143,72 @@ body {
     0 0 18px 2px rgb(var(--color-accent-edge-rgb) / 0.14);
 }
 
+/* Monochrome theme.
+   Activated by data-theme="mono" on <html>. Purely ADDITIVE: everything above
+   is the default (amethyst) theme and is never modified from here.
+
+   Only the accent family is redeclared. Surfaces and text (--color-bg,
+   --color-surface, --color-border, --color-text, --color-text-muted) are
+   deliberately NOT overridden — mono changes what glows, not what it glows on.
+
+   Both forms of each accent are set. Overriding the hex alone would leave the
+   glow amethyst on silver cards, which is the exact bug the -rgb triplets were
+   introduced to remove. */
+[data-theme="mono"] {
+  --color-accent: #b4b4c0; /* silver core */
+  --color-accent-rgb: 180 180 192;
+  --color-accent-edge: #f2f2f7; /* near-white edge */
+  --color-accent-edge-rgb: 242 242 247;
+  --color-accent-soft: #c9c9d4; /* light grey for accent text/labels */
+}
+
+/* Silver reads brighter than amethyst at the same alpha, so mono re-tunes the
+   glow DOWN rather than reusing the default alphas. Every blur, spread, offset
+   and radius below is copied verbatim from the default rules — only the alphas
+   differ, so the soft tier's <=10px rest reach (and its grid-bleed guard) holds
+   here exactly as it does above.
+
+   The two tiers get deliberately different intensities:
+     soft   = "whisper"  — grid cards, must never bleed into a neighbour
+     strong = "balanced" — hero/standalone cards, room to bloom */
+[data-theme="mono"] .glow-card:hover {
+  border-color: rgb(var(--color-accent-rgb) / 0.45);
+}
+
+[data-theme="mono"] .glow-card-strong::before {
+  box-shadow:
+    inset 0 1px 0 0 rgb(255 255 255 / 0.03),
+    0 0 0 1px rgb(var(--color-accent-rgb) / 0.09),
+    0 0 12px 0 rgb(var(--color-accent-rgb) / 0.09),
+    0 0 28px 2px rgb(var(--color-accent-rgb) / 0.09),
+    0 0 44px 6px rgb(var(--color-accent-edge-rgb) / 0.045);
+}
+
+[data-theme="mono"] .glow-card-strong::after {
+  box-shadow:
+    inset 0 1px 0 0 rgb(255 255 255 / 0.04),
+    0 0 0 1px rgb(var(--color-accent-rgb) / 0.18),
+    0 0 16px 0 rgb(var(--color-accent-rgb) / 0.18),
+    0 0 38px 3px rgb(var(--color-accent-rgb) / 0.18),
+    0 0 60px 8px rgb(var(--color-accent-edge-rgb) / 0.08);
+}
+
+[data-theme="mono"] .glow-card-soft::before {
+  box-shadow:
+    inset 0 1px 0 0 rgb(255 255 255 / 0.03),
+    0 0 0 1px rgb(var(--color-accent-rgb) / 0.05),
+    0 0 6px 0 rgb(var(--color-accent-rgb) / 0.08),
+    0 0 10px 1px rgb(var(--color-accent-edge-rgb) / 0.03);
+}
+
+[data-theme="mono"] .glow-card-soft::after {
+  box-shadow:
+    inset 0 1px 0 0 rgb(255 255 255 / 0.04),
+    0 0 0 1px rgb(var(--color-accent-rgb) / 0.11),
+    0 0 10px 0 rgb(var(--color-accent-rgb) / 0.11),
+    0 0 18px 2px rgb(var(--color-accent-edge-rgb) / 0.06);
+}
+
 /* Progress slider (Goals) — track fill is painted inline as a two-stop
    gradient (accent up to the current %, border beyond); only the thumb is
    styled here. Thumb feedback animates transform only, per the animation law.
