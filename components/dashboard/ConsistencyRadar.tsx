@@ -149,8 +149,14 @@ export default function ConsistencyRadar({ scores }: { scores: AreaConsistency[]
         </filter>
       </defs>
 
-      {/* Guide rings: nested pentagons, so they track the shape, not a circle. */}
-      <g stroke="var(--color-border)" fill="none" strokeOpacity="0.95">
+      {/* Guide rings: nested pentagons, so they track the shape, not a circle.
+          Deliberately --color-text-muted, NOT --color-border: the border token
+          (#1c1a26) sits a few points off the near-black background, so no
+          amount of opacity makes it read as a grid — the colour has to change,
+          not the alpha. Muted grey at a low alpha gives a quiet scale the
+          polygon can be measured against. The outer ring carries a little more
+          weight than the inner ones so it frames the chart. */}
+      <g stroke="var(--color-text-muted)" fill="none">
         {RINGS.map((ring) => (
           <polygon
             key={ring}
@@ -159,13 +165,14 @@ export default function ConsistencyRadar({ scores }: { scores: AreaConsistency[]
                 vertex(i, count, RADIUS * ring),
               ),
             )}
+            strokeOpacity={ring === 1 ? 0.38 : 0.26}
             strokeWidth={ring === 1 ? 1.25 : 1}
           />
         ))}
       </g>
 
       {/* Axis lines, centre to each vertex. */}
-      <g stroke="var(--color-border)" strokeOpacity="0.8" strokeWidth="1">
+      <g stroke="var(--color-text-muted)" strokeOpacity="0.22" strokeWidth="1">
         {scores.map((score, i) => {
           const tip = vertex(i, count, RADIUS);
           return <line key={score.area} x1={CX} y1={CY} x2={tip.x} y2={tip.y} />;
