@@ -10,7 +10,7 @@
 
 export const THEME_STORAGE_KEY = "theme";
 
-export const THEMES = ["amethyst", "mono"] as const;
+export const THEMES = ["amethyst", "mono", "crimson"] as const;
 
 export type Theme = (typeof THEMES)[number];
 
@@ -22,14 +22,19 @@ export function isTheme(value: unknown): value is Theme {
 }
 
 /**
- * Applies a theme to <html> the same way the before-paint script does: mono
- * stamps the attribute, amethyst removes it. Kept here so the runtime switcher
- * and the boot script stay one behaviour, not two.
+ * Applies a theme to <html> the same way the before-paint script does: every
+ * non-default theme stamps its own name, and the default removes the attribute
+ * entirely. Kept here so the runtime switcher and the boot script stay one
+ * behaviour, not two.
+ *
+ * Deliberately keyed off DEFAULT_THEME rather than naming a theme, so adding a
+ * fourth palette needs no change here — only THEMES, the CSS block, and the
+ * boot script's allow-list.
  */
 export function applyTheme(theme: Theme) {
-  if (theme === "mono") {
-    document.documentElement.setAttribute("data-theme", "mono");
-  } else {
+  if (theme === DEFAULT_THEME) {
     document.documentElement.removeAttribute("data-theme");
+  } else {
+    document.documentElement.setAttribute("data-theme", theme);
   }
 }

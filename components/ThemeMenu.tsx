@@ -19,6 +19,7 @@ import {
 const LABELS: Record<Theme, string> = {
   amethyst: "Amethyst",
   mono: "Monochrome",
+  crimson: "Crimson",
 };
 
 /** Same shape as ExportButton's button, so the pair reads as one control group. */
@@ -32,7 +33,8 @@ const TRIGGER =
  * is ever stamped.
  */
 function readActiveTheme(): Theme {
-  if (document.documentElement.getAttribute("data-theme") === "mono") return "mono";
+  const attr = document.documentElement.getAttribute("data-theme");
+  if (isTheme(attr)) return attr;
   try {
     const stored = localStorage.getItem(THEME_STORAGE_KEY);
     if (isTheme(stored)) return stored;

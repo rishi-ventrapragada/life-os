@@ -27,13 +27,17 @@ export const metadata: Metadata = {
  * therefore duplicated from THEME_STORAGE_KEY / Theme by necessity — change one,
  * change the other.
  *
- * Only "mono" is acted on. A missing, "amethyst", or corrupted value all fall
- * through to the default cascade, so bad storage can never produce a
- * half-themed page. localStorage ACCESS itself throws when storage is disabled
- * (Safari private mode), hence the try/catch — without it the whole document
- * would fail to render.
+ * Only the non-default themes are acted on, and only against an explicit
+ * allow-list. A missing, "amethyst", or corrupted value all fall through to the
+ * default cascade, so bad storage can never produce a half-themed page.
+ * localStorage ACCESS itself throws when storage is disabled (Safari private
+ * mode), hence the try/catch — without it the whole document would fail to
+ * render.
+ *
+ * The allow-list mirrors THEMES minus DEFAULT_THEME. Adding a palette means
+ * adding it here too.
  */
-const THEME_INIT_SCRIPT = `try{if(localStorage.getItem("theme")==="mono"){document.documentElement.setAttribute("data-theme","mono")}}catch(e){}`;
+const THEME_INIT_SCRIPT = `try{var t=localStorage.getItem("theme");if(t==="mono"||t==="crimson"){document.documentElement.setAttribute("data-theme",t)}}catch(e){}`;
 
 export default function RootLayout({
   children,
