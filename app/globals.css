@@ -78,7 +78,17 @@ body {
    and opacity). Border-color switches instantly on hover. */
 .glow-card {
   position: relative;
-  background-color: var(--color-surface);
+  /* Transparent surface: the star field reads through every card. Applies to
+     both tiers — soft and strong add only glow, never fill. Geometry, border
+     and hover are unchanged; this is fill-only.
+
+     Consequence of no opaque face: the inner part of each shadow (including
+     the `inset 0 1px 0` top highlight) now washes faintly across the card
+     instead of only rimming it. That is inherent to a transparent surface.
+
+     To go back to a solid or tinted surface, change this one declaration —
+     var(--color-surface), or rgb(var(--color-surface-rgb) / 0.4) for a tint. */
+  background-color: transparent;
   border: 1px solid var(--color-border);
   transition-property: transform;
   transition-duration: 200ms;
