@@ -55,10 +55,17 @@ describe("STARS — the committed field", () => {
   });
 
   it("holds exactly the designed star counts", () => {
-    expect(STARS.near).toHaveLength(30);
-    expect(STARS.mid).toHaveLength(34);
-    expect(STARS.far).toHaveLength(40);
-    expect(TOTAL_STARS).toBe(104);
+    expect(STARS.near).toHaveLength(46);
+    expect(STARS.mid).toHaveLength(52);
+    expect(STARS.far).toHaveLength(62);
+    expect(TOTAL_STARS).toBe(160);
+  });
+
+  it("gets denser with distance", () => {
+    // More stars further away reinforces the depth read, and the far layer's
+    // lower opacity keeps the extra count from making it busy.
+    expect(LAYERS.far.count).toBeGreaterThan(LAYERS.mid.count);
+    expect(LAYERS.mid.count).toBeGreaterThan(LAYERS.near.count);
   });
 
   it("is frozen, so shared star data cannot be mutated", () => {
@@ -135,10 +142,24 @@ describe("opacity ramp", () => {
 });
 
 describe("layer specs", () => {
-  it("carries the design's durations", () => {
-    expect(LAYERS.near.durationSec).toBe(42);
-    expect(LAYERS.mid.durationSec).toBe(78);
-    expect(LAYERS.far.durationSec).toBe(130);
+  it("carries the tuned durations", () => {
+    expect(LAYERS.near.durationSec).toBe(32);
+    expect(LAYERS.mid.durationSec).toBe(59);
+    expect(LAYERS.far.durationSec).toBe(98);
+  });
+
+  it("preserves the design's speed RATIOS at any overall tempo", () => {
+    // The ramp is always scaled as a whole. This is the guard against the
+    // inversion that happened once when a single layer was retuned alone.
+    const ratio = (a: number, b: number) => a / b;
+    expect(ratio(LAYERS.mid.durationSec, LAYERS.near.durationSec)).toBeCloseTo(
+      78 / 42,
+      1,
+    );
+    expect(ratio(LAYERS.far.durationSec, LAYERS.near.durationSec)).toBeCloseTo(
+      130 / 42,
+      1,
+    );
   });
 
   it("gets slower with distance, which is the parallax", () => {
