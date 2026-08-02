@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { ensureAreasSeeded } from "@/lib/bootstrap";
 import { useSession } from "@/components/auth/SessionProvider";
+import { completionStamp } from "@/lib/completion";
 import type { LifeArea } from "@/lib/lifeAreas";
 import type { Task, Priority, Status } from "@/components/tasks/types";
 
@@ -23,6 +24,12 @@ const SAVE_FAILED =
 
 const NOT_READY = "Workspace still setting up — try again in a second.";
 
+/**
+ * Clock for `completed_at`. An instant, not an IST calendar date, so
+ * getTodayIST() deliberately does not apply — see lib/completion.ts.
+ */
+const nowISO = () => new Date().toISOString();
+
 function rowToTask(row: TaskRow): Task {
   return {
     id: row.id,
@@ -34,6 +41,12 @@ function rowToTask(row: TaskRow): Task {
   };
 }
 
+/**
+ * Maps model fields to columns. `completed_at` is deliberately NOT handled here:
+ * it is derived from a status *transition*, not from a field on Task, so the
+ * callers merge it in via completionStamp() — always into this same row object,
+ * so the stamp and the status ship in one write rather than a second round-trip.
+ */
 function patchToRow(patch: Partial<Task>, areaIds: Record<string, string>) {
   const row: Record<string, unknown> = {};
   if (patch.title !== undefined) row.title = patch.title;
@@ -52,6 +65,17 @@ export function useTasks() {
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [error, setError] = useState<string | null>(null);
   const areaIds = useRef<Record<string, string>>({});
+
+  /**
+   * Mirror of `tasks` for reads inside event handlers. updateTask needs the
+   * status a task had before the write, and a ref gives it the committed value
+   * without making the setTasks updater impure (React 19 lint forbids side
+   * effects in updaters) and without adding `tasks` to a dependency list.
+   */
+  const tasksRef = useRef<Task[]>([]);
+  useEffect(() => {
+    tasksRef.current = tasks;
+  }, [tasks]);
 
   const refetch = useCallback(async () => {
     const { data, error: fetchError } = await supabase
@@ -97,9 +121,15 @@ export function useTasks() {
       setError(NOT_READY);
       return false;
     }
+    // A task can be created directly as Done (the form offers all three
+    // statuses), so creation is a transition from "no previous status".
+    const row0 = patchToRow(data, areaIds.current);
+    const stamp = completionStamp(undefined, data.status, nowISO);
+    if (stamp !== undefined) row0.completed_at = stamp;
+
     const { data: row, error: insertError } = await supabase
       .from("tasks")
-      .insert(patchToRow(data, areaIds.current))
+      .insert(row0)
       .select(TASK_COLUMNS)
       .single();
     if (insertError) {
@@ -112,12 +142,24 @@ export function useTasks() {
 
   function updateTask(id: string, patch: Partial<Task>) {
     setError(null);
+
+    // The status the task had BEFORE this write. Needed because the edit form
+    // resends the full task, so `patch.status` is present even on a rename —
+    // only comparing against the previous value distinguishes a real completion
+    // from an unrelated edit. Read from the ref (committed state) rather than
+    // from inside the updater, which must stay pure.
+    const prevStatus = tasksRef.current.find((t) => t.id === id)?.status;
+
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
 
     void (async () => {
+      const row = patchToRow(patch, areaIds.current);
+      const stamp = completionStamp(prevStatus, patch.status, nowISO);
+      if (stamp !== undefined) row.completed_at = stamp;
+
       const { error: updateError } = await supabase
         .from("tasks")
-        .update(patchToRow(patch, areaIds.current))
+        .update(row)
         .eq("id", id);
       if (updateError) await resyncAfterError();
     })();
