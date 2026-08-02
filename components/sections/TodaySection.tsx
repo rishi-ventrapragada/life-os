@@ -75,7 +75,7 @@ export default function TodaySection() {
 
             <div className="flex flex-col gap-3">
               <h3 className="font-display text-xs uppercase tracking-[0.2em] text-(--color-text-muted)">
-                Due today
+                What&apos;s due
               </h3>
               {tasks.status === "loading" ? (
                 <p className="text-sm text-(--color-text-muted)">Loading tasks…</p>

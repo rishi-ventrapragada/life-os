@@ -1,6 +1,6 @@
 "use client";
 
-import { dueLabel } from "@/lib/due";
+import { dueLabel, DUE_TIER_CLASS } from "@/lib/due";
 import type { Task } from "@/components/tasks/types";
 
 type TodayTasksProps = {
@@ -11,10 +11,14 @@ type TodayTasksProps = {
 };
 
 /**
- * Tasks due today or overdue (PRD §4.1c), completable in place so the daily
- * check-in never has to leave this section. Filtering uses the shared
- * lib/due.ts comparison — the same one TaskCard renders its badge from, so the
- * two can't disagree about what "overdue" means.
+ * Everything due within the next week (PRD §4.1c), completable in place so the
+ * daily check-in never has to leave this section. Filtering uses the shared
+ * lib/due.ts ladder — the same one TaskCard renders its badge from, so the two
+ * can't disagree about what "overdue" means.
+ *
+ * The cut is an explicit "not Distant" test, not a null check: since the ladder
+ * widened, every dated task gets a label, so the old `!== null` filter would
+ * pass every task in the list including ones years out.
  */
 export default function TodayTasks({
   tasks,
@@ -22,22 +26,26 @@ export default function TodayTasks({
   onComplete,
   ready,
 }: TodayTasksProps) {
+  // Pair each task with its label once (the filter and the row both need it),
+  // then sort soonest-first. ISO dates sort chronologically as plain strings,
+  // the same property the ladder itself relies on.
   const due = tasks
-    .filter((t) => t.status !== "Done")
-    .filter((t) => t.dueDate && dueLabel(t.dueDate, todayIST) !== null);
+    .filter((t) => t.status !== "Done" && t.dueDate)
+    .map((task) => ({ task, info: dueLabel(task.dueDate!, todayIST) }))
+    .filter(({ info }) => info.tier !== "Distant")
+    .sort((a, b) => a.task.dueDate!.localeCompare(b.task.dueDate!));
 
   if (due.length === 0) {
     return (
       <p className="text-sm text-(--color-text-muted)">
-        Nothing due today. Clear.
+        Nothing due this week. Clear.
       </p>
     );
   }
 
   return (
     <ul className="flex flex-col gap-1">
-      {due.map((task) => {
-        const label = dueLabel(task.dueDate!, todayIST);
+      {due.map(({ task, info }) => {
         return (
           <li key={task.id}>
             <button
@@ -67,13 +75,9 @@ export default function TodayTasks({
                 {task.title}
               </span>
               <span
-                className={`ml-auto shrink-0 rounded-full px-2 py-0.5 text-[0.65rem] font-medium uppercase tracking-[0.1em] ${
-                  label === "Overdue"
-                    ? "bg-red-500/15 text-red-300"
-                    : "bg-(--color-accent)/15 text-(--color-accent-soft)"
-                }`}
+                className={`ml-auto shrink-0 rounded-full px-2 py-0.5 text-[0.65rem] font-medium uppercase tracking-[0.1em] ${DUE_TIER_CLASS[info.tier]}`}
               >
-                {label}
+                {info.text}
               </span>
             </button>
           </li>

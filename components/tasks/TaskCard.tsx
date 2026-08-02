@@ -1,6 +1,6 @@
 import GlowCard from "@/components/GlowCard";
 import { getTodayIST } from "@/lib/dates";
-import { dueLabel } from "@/lib/due";
+import { dueLabel, DUE_TIER_CLASS } from "@/lib/due";
 import { formatISODate } from "@/lib/formatDate";
 import type { Task, Priority } from "@/components/tasks/types";
 
@@ -17,7 +17,7 @@ const PRIORITY_CLASS: Record<Priority, string> = {
 };
 
 export default function TaskCard({ task, onEdit, onDelete }: TaskCardProps) {
-  const label = task.dueDate ? dueLabel(task.dueDate, getTodayIST()) : null;
+  const due = task.dueDate ? dueLabel(task.dueDate, getTodayIST()) : null;
 
   return (
     <GlowCard className="flex flex-col gap-4">
@@ -50,15 +50,13 @@ export default function TaskCard({ task, onEdit, onDelete }: TaskCardProps) {
         {task.dueDate && (
           <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-(--color-text-muted)">
             <span>Due {formatISODate(task.dueDate)}</span>
-            {label && (
+            {/* The Distant badge is just the date again — the raw text beside
+                it already says so, so only the word-labelled tiers get a pill. */}
+            {due && due.tier !== "Distant" && (
               <span
-                className={`rounded-full px-2 py-0.5 text-[0.65rem] font-medium uppercase tracking-[0.1em] ${
-                  label === "Overdue"
-                    ? "bg-red-500/15 text-red-300"
-                    : "bg-(--color-accent)/15 text-(--color-accent-soft)"
-                }`}
+                className={`rounded-full px-2 py-0.5 text-[0.65rem] font-medium uppercase tracking-[0.1em] ${DUE_TIER_CLASS[due.tier]}`}
               >
-                {label}
+                {due.text}
               </span>
             )}
           </p>

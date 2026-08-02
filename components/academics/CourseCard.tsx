@@ -2,7 +2,7 @@
 
 import GlowCard from "@/components/GlowCard";
 import { getTodayIST } from "@/lib/dates";
-import { dueLabel } from "@/lib/due";
+import { dueLabel, DUE_TIER_CLASS } from "@/lib/due";
 import { formatISODate } from "@/lib/formatDate";
 import { courseDoneTotal } from "@/lib/academics";
 import type { Assignment, Course } from "@/components/academics/types";
@@ -21,9 +21,26 @@ export default function CourseCard({
   onDelete,
 }: CourseCardProps) {
   const { done, total } = courseDoneTotal(assignments, course.id);
-  const examLabel = course.nextExamDate
+  const exam = course.nextExamDate
     ? dueLabel(course.nextExamDate, getTodayIST())
     : null;
+
+  /**
+   * Exams borrow the due ladder's comparison but not all of its wording: an
+   * exam that has happened is "Passed", not "Overdue", and the day itself is
+   * "Today", not "Due today". Every other tier already reads correctly for an
+   * exam ("Due tomorrow", "This week", a date), so it renders as-is — the old
+   * two-branch version fell through to "Today" and would have shown a
+   * week-away exam as happening today.
+   */
+  const examText =
+    exam === null
+      ? null
+      : exam.tier === "Overdue"
+        ? "Passed"
+        : exam.tier === "Due today"
+          ? "Today"
+          : exam.text;
 
   return (
     <GlowCard className="flex flex-col gap-4">
@@ -56,15 +73,11 @@ export default function CourseCard({
         {course.nextExamDate && (
           <span className="flex flex-wrap items-center gap-2 text-(--color-text-muted)">
             Exam {formatISODate(course.nextExamDate)}
-            {examLabel && (
+            {exam && examText && (
               <span
-                className={`rounded-full px-2 py-0.5 text-[0.65rem] font-medium uppercase tracking-[0.1em] ${
-                  examLabel === "Overdue"
-                    ? "bg-red-500/15 text-red-300"
-                    : "bg-(--color-accent)/15 text-(--color-accent-soft)"
-                }`}
+                className={`rounded-full px-2 py-0.5 text-[0.65rem] font-medium uppercase tracking-[0.1em] ${DUE_TIER_CLASS[exam.tier]}`}
               >
-                {examLabel === "Overdue" ? "Passed" : "Today"}
+                {examText}
               </span>
             )}
           </span>

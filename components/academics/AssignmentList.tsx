@@ -1,7 +1,7 @@
 "use client";
 
 import { getTodayIST } from "@/lib/dates";
-import { dueLabel } from "@/lib/due";
+import { dueLabel, DUE_TIER_CLASS } from "@/lib/due";
 import { formatISODate } from "@/lib/formatDate";
 import type { Assignment, Course } from "@/components/academics/types";
 
@@ -37,7 +37,7 @@ export default function AssignmentList({
   return (
     <ul className="flex flex-col gap-2">
       {assignments.map((a) => {
-        const label = a.dueDate ? dueLabel(a.dueDate, today) : null;
+        const due = a.dueDate ? dueLabel(a.dueDate, today) : null;
         const done = a.status === "Done";
         return (
           <li
@@ -73,9 +73,11 @@ export default function AssignmentList({
               <span className="flex flex-wrap items-center gap-2 text-xs text-(--color-text-muted)">
                 {courseName(a.courseId)}
                 {a.dueDate && <span>· due {formatISODate(a.dueDate)}</span>}
-                {label && !done && (
-                  <span className={`rounded-full px-1.5 py-0.5 text-[0.6rem] font-medium uppercase tracking-[0.1em] ${label === "Overdue" ? "bg-red-500/15 text-red-300" : "bg-(--color-accent)/15 text-(--color-accent-soft)"}`}>
-                    {label}
+                {/* Distant repeats the raw date beside it — badge only the
+                    word-labelled tiers. */}
+                {due && due.tier !== "Distant" && !done && (
+                  <span className={`rounded-full px-1.5 py-0.5 text-[0.6rem] font-medium uppercase tracking-[0.1em] ${DUE_TIER_CLASS[due.tier]}`}>
+                    {due.text}
                   </span>
                 )}
               </span>
