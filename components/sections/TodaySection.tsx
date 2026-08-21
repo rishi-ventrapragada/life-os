@@ -9,6 +9,7 @@ import TodayTasks from "@/components/today/TodayTasks";
 import TodayJournalLine from "@/components/today/TodayJournalLine";
 import WeekProgress from "@/components/today/WeekProgress";
 import ExportButton from "@/components/today/ExportButton";
+import ResetDemoButton from "@/components/today/ResetDemoButton";
 import ThemeMenu from "@/components/ThemeMenu";
 import { useHabits } from "@/components/habits/useHabits";
 import { useTasks } from "@/components/tasks/useTasks";
@@ -42,6 +43,7 @@ export default function TodaySection() {
         <div className="flex flex-col items-end gap-2">
           <ThemeMenu />
           <ExportButton />
+          <ResetDemoButton />
         </div>
       </div>
 
