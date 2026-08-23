@@ -3,6 +3,7 @@
 import { useState } from "react";
 import GlowCard from "@/components/GlowCard";
 import { supabase } from "@/lib/supabase";
+import { DEMO_EMAIL, DEMO_PASSWORD } from "@/lib/demo";
 
 type Mode = "signin" | "signup";
 
@@ -55,6 +56,19 @@ export default function LoginForm() {
 
   function switchMode() {
     setMode((m) => (m === "signin" ? "signup" : "signin"));
+    setError(null);
+    setNotice(null);
+  }
+
+  /**
+   * Fills the controlled fields via state, same as typing — never touches the
+   * DOM directly. Deliberately does not submit: the visitor sees the demo
+   * credentials land in the form and clicks Sign in themselves.
+   */
+  function fillDemoCredentials() {
+    setMode("signin");
+    setEmail(DEMO_EMAIL);
+    setPassword(DEMO_PASSWORD);
     setError(null);
     setNotice(null);
   }
@@ -125,6 +139,16 @@ export default function LoginForm() {
                   ? "Sign in"
                   : "Sign up"}
             </button>
+
+            {mode === "signin" && (
+              <button
+                type="button"
+                onClick={fillDemoCredentials}
+                className="w-full rounded-md border border-(--color-accent) bg-transparent px-4 py-2 text-sm font-medium text-(--color-accent-soft) transition-[opacity,transform] duration-150 hover:opacity-85 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-accent-edge) active:scale-95"
+              >
+                Try the demo
+              </button>
+            )}
           </form>
         </GlowCard>
 
