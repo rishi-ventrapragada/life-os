@@ -6,21 +6,28 @@ import SectionHeader from "@/components/SectionHeader";
 import Reveal from "@/components/Reveal";
 import JournalEntryCard from "@/components/journal/JournalEntryCard";
 import JournalEntryForm from "@/components/journal/JournalEntryForm";
+import JournalCalendar from "@/components/journal/JournalCalendar";
 import { useJournal } from "@/components/journal/useJournal";
 
 export default function JournalSection() {
   const { entries, status, error, saveEntry } = useJournal();
   const [isAdding, setIsAdding] = useState(false);
   const [editingDate, setEditingDate] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const ready = status === "ready";
 
   async function handleAdd(entryDate: string, content: string) {
-    if (await saveEntry(entryDate, content)) setIsAdding(false);
+    if (await saveEntry(entryDate, content)) {
+      setIsAdding(false);
+      setSelectedDate(entryDate);
+    }
   }
 
   async function handleEdit(entryDate: string, content: string) {
     if (await saveEntry(entryDate, content)) setEditingDate(null);
   }
+
+  const selectedEntry = entries.find((e) => e.entryDate === selectedDate) ?? null;
 
   return (
     <section id="journal" className="scroll-mt-8">
@@ -67,26 +74,35 @@ export default function JournalSection() {
             </p>
           </GlowCard>
         ) : (
-          entries.map((entry) =>
-            editingDate === entry.entryDate ? (
-              <GlowCard key={entry.id}>
-                <JournalEntryForm
-                  allowDateChange={false}
-                  initialDate={entry.entryDate}
-                  initialContent={entry.content}
-                  onSave={handleEdit}
-                  onCancel={() => setEditingDate(null)}
-                  saveLabel="Save changes"
-                />
-              </GlowCard>
-            ) : (
-              <JournalEntryCard
-                key={entry.id}
-                entry={entry}
-                onEdit={() => setEditingDate(entry.entryDate)}
+          <>
+            <GlowCard>
+              <JournalCalendar
+                entries={entries}
+                selectedDate={selectedDate}
+                onSelect={(date) => setSelectedDate(date)}
               />
-            ),
-          )
+            </GlowCard>
+
+            {selectedEntry &&
+              (editingDate === selectedEntry.entryDate ? (
+                <GlowCard>
+                  <JournalEntryForm
+                    allowDateChange={false}
+                    initialDate={selectedEntry.entryDate}
+                    initialContent={selectedEntry.content}
+                    onSave={handleEdit}
+                    onCancel={() => setEditingDate(null)}
+                    saveLabel="Save changes"
+                  />
+                </GlowCard>
+              ) : (
+                <JournalEntryCard
+                  entry={selectedEntry}
+                  onEdit={() => setEditingDate(selectedEntry.entryDate)}
+                  onClose={() => setSelectedDate(null)}
+                />
+              ))}
+          </>
         )}
       </Reveal>
     </section>

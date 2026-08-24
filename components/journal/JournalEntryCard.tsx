@@ -8,9 +8,12 @@ import type { JournalEntry } from "@/components/journal/useJournal";
 type JournalEntryCardProps = {
   entry: JournalEntry;
   onEdit: () => void;
+  /** Optional: shown alongside Edit when the entry is opened from the
+   * calendar rather than always rendered inline (e.g. JournalSection). */
+  onClose?: () => void;
 };
 
-export default function JournalEntryCard({ entry, onEdit }: JournalEntryCardProps) {
+export default function JournalEntryCard({ entry, onEdit, onClose }: JournalEntryCardProps) {
   const isToday = entry.entryDate === getTodayIST();
 
   return (
@@ -24,13 +27,25 @@ export default function JournalEntryCard({ entry, onEdit }: JournalEntryCardProp
             </span>
           )}
         </p>
-        <button
-          type="button"
-          onClick={onEdit}
-          className="rounded-md px-2 py-1 text-xs text-(--color-text-muted) transition-opacity duration-150 hover:text-(--color-text) focus-visible:outline-2 focus-visible:outline-(--color-accent-edge) active:opacity-60"
-        >
-          Edit
-        </button>
+        <span className="flex shrink-0 gap-1">
+          <button
+            type="button"
+            onClick={onEdit}
+            className="rounded-md px-2 py-1 text-xs text-(--color-text-muted) transition-opacity duration-150 hover:text-(--color-text) focus-visible:outline-2 focus-visible:outline-(--color-accent-edge) active:opacity-60"
+          >
+            Edit
+          </button>
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close entry"
+              className="rounded-md px-2 py-1 text-xs text-(--color-text-muted) transition-opacity duration-150 hover:text-(--color-text) focus-visible:outline-2 focus-visible:outline-(--color-accent-edge) active:opacity-60"
+            >
+              ✕
+            </button>
+          )}
+        </span>
       </div>
       <p className="whitespace-pre-wrap text-sm leading-[1.7] text-(--color-text)">
         {entry.content}

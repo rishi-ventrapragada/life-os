@@ -34,3 +34,18 @@ export function formatISODateShort(iso: string, today: string): string {
   const short = `${Number(d)} ${MONTHS[Number(m) - 1] ?? "?"}`;
   return y === today.split("-")[0] ? short : `${short} ${y}`;
 }
+
+/**
+ * Format a "yyyy-mm" month key for a section heading (e.g. "August 2026").
+ * Full month name, unlike the 3-letter form above — a heading has room and
+ * reads better spelled out. Pure string split, same reasoning as formatISODate.
+ */
+const FULL_MONTHS = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+export function formatMonthLabel(yyyyMm: string): string {
+  const [y, m] = yyyyMm.split("-");
+  return `${FULL_MONTHS[Number(m) - 1] ?? "?"} ${y}`;
+}
