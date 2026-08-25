@@ -141,6 +141,62 @@ describe("opacity ramp", () => {
   });
 });
 
+describe("twinkle phase", () => {
+  it("stays within [0, 1)", () => {
+    for (const name of NAMES) {
+      for (const star of STARS[name]) {
+        expect(star.phase).toBeGreaterThanOrEqual(0);
+        expect(star.phase).toBeLessThan(1);
+      }
+    }
+  });
+
+  it("is well spread, so the layer does not pulse in unison", () => {
+    // The whole point of a per-star phase is desync. A degenerate generator
+    // (every star landing on one value) would still pass the range check
+    // above while making the field blink as one.
+    for (const name of NAMES) {
+      const unique = new Set(STARS[name].map((s) => s.phase));
+      expect(unique.size).toBeGreaterThan(STARS[name].length * 0.9);
+      const values = STARS[name].map((s) => s.phase);
+      expect(Math.min(...values)).toBeLessThan(0.1);
+      expect(Math.max(...values)).toBeGreaterThan(0.9);
+    }
+  });
+
+  it("differs between layers, which all share seed 10", () => {
+    // Without mixing count into the phase seed, near/mid/far would get the
+    // identical sequence and same-index stars would pulse together.
+    const near = STARS.near.map((s) => s.phase);
+    expect(STARS.mid.slice(0, near.length).map((s) => s.phase)).not.toEqual(near);
+    expect(STARS.far.slice(0, near.length).map((s) => s.phase)).not.toEqual(near);
+  });
+
+  it("leaves position and brightness untouched by the phase stream", () => {
+    // Guards the reason PHASE_SEED_OFFSET exists: phase is drawn from its own
+    // generator, so the committed sky must match a generator that never draws
+    // a phase at all. If someone folds phase back into the position stream,
+    // every star shifts and this fails.
+    for (const name of NAMES) {
+      const random = createRandom(SEEDS[name]);
+      for (const star of STARS[name]) {
+        const sizeRoll = random();
+        const size = sizeRoll < SMALL_STAR_RATIO ? 1 : sizeRoll < (1 + SMALL_STAR_RATIO) / 2 ? 2 : 3;
+        const x = Math.round(random() * 50 * 100) / 100;
+        const y = Math.round(random() * 100 * 100) / 100;
+        const opacity =
+          Math.round(LAYERS[name].maxOpacity * (0.35 + random() * 0.65) * 1000) / 1000;
+        expect({ x: star.x, y: star.y, size: star.size, opacity: star.opacity }).toEqual({
+          x,
+          y,
+          size,
+          opacity,
+        });
+      }
+    }
+  });
+});
+
 describe("layer specs", () => {
   it("carries the tuned durations", () => {
     expect(LAYERS.near.durationSec).toBe(32);

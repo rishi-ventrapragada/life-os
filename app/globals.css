@@ -478,14 +478,59 @@ body {
   box-shadow: 0 0 var(--bloom-blur, 4px) 0 rgb(var(--color-accent-soft-rgb) / 0.5);
 }
 
+/* Twinkle — near and mid only (StarField.tsx picks the layers; far stays static
+   because pulsing every depth reads as noise rather than starlight).
+
+   OPACITY ONLY, so it stays on the compositor alongside the drift's transform.
+   Never animate the box-shadow bloom: that would repaint every frame.
+
+   The pulse is relative to each star's own base opacity rather than a fixed
+   pair of values, so a dim star twinkles dimly instead of flaring to match a
+   bright one. That base arrives as --star-opacity rather than a plain inline
+   opacity, because this animation targets `opacity` and would override it. */
+@keyframes starfield-twinkle {
+  0%,
+  100% {
+    opacity: var(--star-opacity);
+  }
+  50% {
+    opacity: calc(var(--star-opacity) * 0.4);
+  }
+}
+
+.starfield-star[data-twinkle] {
+  opacity: var(--star-opacity);
+  /* ease-in-out, not linear: linear is mandatory only for the drift, whose loop
+     seam would stutter under easing. A twinkle has no seam, and easing makes
+     the pulse breathe instead of ticking. */
+  animation: starfield-twinkle var(--twinkle-dur, 7s) ease-in-out infinite;
+  /* Negative and per-star, from the committed `phase`. Negative so every star
+     starts already mid-cycle — a positive delay would hold the whole field at
+     full brightness for one cycle before anything moved. */
+  animation-delay: var(--twinkle-delay, 0s);
+}
+
+/* Deliberately NO will-change here, unlike the two drifting layers. That hint
+   promotes a compositor layer permanently, and this selector matches 196
+   elements rather than 2 — the memory cost scales with the count while opacity
+   animations are composited without the hint anyway. */
+
 /* Reduced motion: hold the drift at its start position, where both copies are
    in place and the field is a complete static sky. Deliberately scoped to
    .starfield-layer rather than a blanket `*` rule — .reveal and .glow-card
    already carry their own tuned reduced-motion handling, and a global override
-   would trample it. Increment 5 refines this into the full static fallback. */
+   would trample it.
+
+   Twinkling stars settle at their own base opacity, so the field stays a
+   complete static sky rather than freezing mid-pulse at 40% brightness. */
 @media (prefers-reduced-motion: reduce) {
   .starfield-layer {
     animation: none;
+  }
+
+  .starfield-star[data-twinkle] {
+    animation: none;
+    opacity: var(--star-opacity);
   }
 }
 

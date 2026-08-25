@@ -1,4 +1,20 @@
-import { LAYERS, LAYER_ORDER, STARS } from "@/lib/starfield";
+import { LAYERS, LAYER_ORDER, STARS, type LayerName } from "@/lib/starfield";
+
+/**
+ * Layers whose stars twinkle. Far is deliberately excluded: pulsing all three
+ * depths at once reads as noise rather than starlight, and far is the densest
+ * layer (62 stars) so it would also carry the largest animation cost for the
+ * least visible payoff.
+ */
+const TWINKLE_LAYERS: readonly LayerName[] = ["near", "mid"];
+
+/**
+ * One shared twinkle cycle length, in seconds. Every twinkling star uses this
+ * duration; only the per-star delay differs, which is what desyncs them. Kept
+ * slow on purpose — the field sits behind card text, so the pulse should read
+ * as barely-there rather than sparkle.
+ */
+const TWINKLE_DURATION_SEC = 7;
 
 /**
  * The field is rendered twice per layer, the second copy shifted +50%. The
@@ -25,13 +41,16 @@ const COPY_OFFSETS = [0, 50] as const;
  * --color-bg, which would cover a negative layer — so page content is lifted to
  * z-10 instead.
  *
- * Increment 2: one static copy of each layer, no motion. The second copy at
- * x + 50 that makes the slide seamless arrives with the animation in increment 3.
+ * Motion is all CSS: the per-layer parallax drift, and a per-star opacity
+ * twinkle on the near and mid layers (see TWINKLE_LAYERS). Both are declarative,
+ * so this stays a zero-JavaScript server component.
  */
 export default function StarField() {
   return (
     <div aria-hidden="true" className="starfield">
-      {LAYER_ORDER.map((layer) => (
+      {LAYER_ORDER.map((layer) => {
+        const twinkles = TWINKLE_LAYERS.includes(layer);
+        return (
         <div
           key={layer}
           className="starfield-layer"
@@ -47,21 +66,32 @@ export default function StarField() {
                 // the design. 1px stars stay flat so the field reads as fine
                 // starlight rather than a field of glowing dots.
                 data-bloom={star.size > 1 ? "" : undefined}
+                data-twinkle={twinkles ? "" : undefined}
                 style={
                   {
                     left: `${star.x + offset}%`,
                     top: `${star.y}%`,
                     width: `${star.size}px`,
                     height: `${star.size}px`,
-                    opacity: star.opacity,
                     "--bloom-blur": `${star.size * 2}px`,
+                    // A twinkling star's base opacity travels as a custom
+                    // property instead: the keyframe pulses between it and a
+                    // fraction of it, and a CSS animation overrides the plain
+                    // `opacity` it targets, so an inline opacity would be
+                    // ignored. Undefined entries are simply dropped by React.
+                    opacity: twinkles ? undefined : star.opacity,
+                    "--star-opacity": twinkles ? star.opacity : undefined,
+                    "--twinkle-delay": twinkles
+                      ? `${-star.phase * TWINKLE_DURATION_SEC}s`
+                      : undefined,
                   } as React.CSSProperties
                 }
               />
             )),
           )}
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
