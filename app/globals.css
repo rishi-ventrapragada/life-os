@@ -599,13 +599,17 @@ body {
    Twinkling stars settle at their own base opacity, so the field stays a
    complete static sky rather than freezing mid-pulse at 40% brightness.
 
-   Meteors are HIDDEN rather than frozen: a halted meteor would sit on screen
-   as a stray diagonal line with no explanation. Hiding is also why the streak
-   needs no static fallback — the stars alone are the complete reduced-motion
-   sky.
+   Meteors are SLOWED AND DIMMED rather than hidden. Hiding them outright was
+   the earlier behaviour, but reduced-motion is very commonly on by default on
+   phones — iOS Low Power Mode and Android battery saver both set it — so it
+   silently removed the feature for a large share of real users rather than
+   only for people who had chosen it. Halving the speed and dropping the
+   opacity keeps the motion gentle enough to respect the preference while
+   leaving the sky alive. They are never FROZEN: a halted meteor would sit on
+   screen as a stray diagonal line with no explanation.
 
-   With drift held, twinkle settled and meteors hidden, every animation in the
-   field now has a defined reduced-motion state. */
+   With drift held, twinkle settled and meteors slowed, every animation in the
+   field has a defined reduced-motion state. */
 @media (prefers-reduced-motion: reduce) {
   .starfield-layer {
     animation: none;
@@ -616,8 +620,20 @@ body {
     opacity: var(--star-opacity);
   }
 
+  .starfield-meteor {
+    /* Half speed. Still transform + opacity only, so the animation law and the
+       compositor-only guarantee hold exactly as in the full-motion case. */
+    animation-duration: calc(var(--meteor-dur, 9s) * 2);
+    /* The delay is scaled to match, so a meteor that was mid-flight on load
+       stays at the same point of its path rather than jumping. */
+    animation-delay: calc(var(--meteor-delay, 0s) * 2);
+  }
+
+  /* Dimmed via the track, not the streak: the streak's own opacity is what the
+     keyframe animates, so overriding it here would fight the animation. The
+     parent's opacity multiplies through instead. */
   .starfield-meteor-track {
-    display: none;
+    opacity: 0.35;
   }
 }
 
