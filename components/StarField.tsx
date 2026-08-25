@@ -1,4 +1,4 @@
-import { LAYERS, LAYER_ORDER, STARS, type LayerName } from "@/lib/starfield";
+import { LAYERS, LAYER_ORDER, METEORS, STARS, type LayerName } from "@/lib/starfield";
 
 /**
  * Layers whose stars twinkle. Far is deliberately excluded: pulsing all three
@@ -41,9 +41,10 @@ const COPY_OFFSETS = [0, 50] as const;
  * --color-bg, which would cover a negative layer — so page content is lifted to
  * z-10 instead.
  *
- * Motion is all CSS: the per-layer parallax drift, and a per-star opacity
- * twinkle on the near and mid layers (see TWINKLE_LAYERS). Both are declarative,
- * so this stays a zero-JavaScript server component.
+ * Motion is all CSS: the per-layer parallax drift, a per-star opacity twinkle
+ * on the near and mid layers (see TWINKLE_LAYERS), and the occasional meteor
+ * (METEORS in lib/starfield.ts). All declarative, so this stays a
+ * zero-JavaScript server component.
  */
 export default function StarField() {
   return (
@@ -92,6 +93,36 @@ export default function StarField() {
         </div>
         );
       })}
+
+      {/* Meteors last, so they streak in front of the stars. Each track holds
+          the STATIC rotation and its child animates translateX only — one axis,
+          and the angle never re-interpolates on resize. The child is the full
+          width of its track, so its -100%/+100% travel is one track-width and
+          rescales with the layout; no vw/vh ever enters a transform. */}
+      {METEORS.map((meteor, index) => (
+        <div
+          key={index}
+          className="starfield-meteor-track"
+          style={
+            {
+              top: `${meteor.topPct}%`,
+              left: `${meteor.leftPct}%`,
+              width: `${meteor.lengthVw}vw`,
+              "--meteor-angle": `${meteor.angleDeg}deg`,
+            } as React.CSSProperties
+          }
+        >
+          <span
+            className="starfield-meteor"
+            style={
+              {
+                "--meteor-dur": `${meteor.durationSec}s`,
+                "--meteor-delay": `${meteor.delaySec}s`,
+              } as React.CSSProperties
+            }
+          />
+        </div>
+      ))}
     </div>
   );
 }

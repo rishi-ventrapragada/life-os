@@ -316,3 +316,86 @@ export const STARS: Record<LayerName, readonly Star[]> = Object.freeze({
 
 /** Total star records, before the x+50 render-time duplicate. */
 export const TOTAL_STARS = LAYERS.near.count + LAYERS.mid.count + LAYERS.far.count;
+
+/**
+ * Share of each meteor's cycle that it is actually visible. The other ~82% is
+ * dead time with the streak parked off-screen, which is precisely what makes
+ * meteors read as OCCASIONAL rather than as a shower. Both the travel and the
+ * fade complete inside this window — see the keyframes in globals.css.
+ */
+export const METEOR_VISIBLE_FRACTION = 0.18;
+
+export type Meteor = {
+  /** Start of the rotated track, as a percentage of the viewport. */
+  topPct: number;
+  leftPct: number;
+  /**
+   * Track length in vw. This sizes the track's LAYOUT box only — it never
+   * enters a transform, so a resize just relaws out the box instead of
+   * re-interpolating an animation mid-flight.
+   */
+  lengthVw: number;
+  /** Static tilt of the track. The child only ever translates along X. */
+  angleDeg: number;
+  /** One full cycle: a brief streak plus a long dead pause. */
+  durationSec: number;
+  /**
+   * NEGATIVE, so the meteor is already partway through its cycle on first
+   * paint. A positive delay would leave the sky empty for several seconds
+   * after load, which reads as the feature being broken.
+   */
+  delaySec: number;
+};
+
+/**
+ * Three meteors, hand-authored rather than generated — there are only a few, so
+ * a PRNG would add machinery without adding value, and committed constants keep
+ * the sky identical for every user (the same reasoning as the star literal).
+ *
+ * The durations are deliberately NON-HARMONIC — 9, 13 and 11 are pairwise
+ * coprime, so no two ever settle into the visible lockstep that 8-and-16 (or
+ * any integer multiple) would produce. All three only realign every 1287s.
+ *
+ * FREQUENCY IS TUNED BY COUNT, NOT BY CYCLE LENGTH. Shortening the durations
+ * would also shorten each streak's flight, because the visible window is a
+ * fraction of the cycle (METEOR_VISIBLE_FRACTION) — meteors would read as
+ * hurried rather than as more frequent. Adding an instance raises the sighting
+ * rate while every meteor keeps its unhurried pace.
+ *
+ * SEPARATION IS DELIBERATE, on two axes. An earlier pass had all three angles
+ * within 6 degrees and entry points only ~13% apart, which put two streaks
+ * within 15 units of each other (the viewport being 100 wide) — close enough to
+ * read as converging or about to intersect. Now every pair differs by at least
+ * 7 degrees in heading, so they visibly fan out rather than running parallel,
+ * and the entry points are ~27-30% apart vertically. Closest simultaneous
+ * on-screen approach is ~28 units.
+ *
+ * Retuning any topPct, angleDeg or delaySec can undo that, so re-check the
+ * pairwise spacing rather than adjusting one value in isolation.
+ */
+export const METEORS: readonly Meteor[] = Object.freeze([
+  Object.freeze({
+    topPct: 5,
+    leftPct: -10,
+    lengthVw: 130,
+    angleDeg: 12,
+    durationSec: 9,
+    delaySec: -2.5,
+  }),
+  Object.freeze({
+    topPct: 32,
+    leftPct: -18,
+    lengthVw: 150,
+    angleDeg: 27,
+    durationSec: 13,
+    delaySec: -10,
+  }),
+  Object.freeze({
+    topPct: 62,
+    leftPct: -14,
+    lengthVw: 140,
+    angleDeg: 19,
+    durationSec: 11,
+    delaySec: -6,
+  }),
+]);

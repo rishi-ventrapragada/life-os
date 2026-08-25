@@ -515,6 +515,81 @@ body {
    elements rather than 2 — the memory cost scales with the count while opacity
    animations are composited without the hint anyway. */
 
+/* Meteors — the occasional shooting star.
+
+   GEOMETRY, and why it survives a resize. The original design animated vw/vh
+   INSIDE a transform, which re-interpolates whenever the viewport changes and
+   makes a meteor jump mid-flight. Here the track carries a STATIC rotation and
+   the child animates translateX ONLY, so a single axis moves and the angle is
+   never part of the animation. The child is width:100% of its track, and
+   translate percentages resolve against the element's OWN border box, so
+   -100% -> 100% is exactly one track-width. The track's vw width is plain
+   layout, which a resize simply re-lays-out. No vw/vh in any transform.
+
+   TIMING. The travel and the fade finish inside the SAME 18% window. Spreading
+   the travel across the whole cycle would fade the streak out mid-screen and
+   restart it at the left edge — a visible jump. Instead it crosses while
+   visible, then parks off-screen for the remaining ~82%, which is what makes
+   meteors occasional rather than a shower.
+
+   linear, because a meteor that decelerates in flight reads as wrong. */
+@keyframes starfield-meteor {
+  0% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  3% {
+    opacity: 1;
+  }
+  15% {
+    opacity: 1;
+  }
+  18% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  100% {
+    /* Parked off-screen and invisible: the long dead pause. */
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+.starfield-meteor-track {
+  position: absolute;
+  height: 2px;
+  /* STATIC. The animation never touches this, so resizing cannot re-interpolate
+     the angle. transform-origin pins the tilt to the track's start point. */
+  transform: rotate(var(--meteor-angle, 19deg));
+  transform-origin: 0 50%;
+  pointer-events: none;
+}
+
+.starfield-meteor {
+  display: block;
+  /* Full track width, which is what makes the -100%/+100% travel resolve to
+     exactly one track-length without any viewport unit in the transform. */
+  width: 100%;
+  height: 100%;
+  border-radius: 9999px;
+  /* Bright head, fading tail. Tinted from the accent pair, so the streak
+     retints per data-theme (mono, crimson) with no extra rules — the same
+     approach the star layers use. */
+  background: linear-gradient(
+    to right,
+    transparent 0%,
+    rgb(var(--color-accent-rgb) / 0.35) 55%,
+    rgb(var(--color-accent-edge-rgb) / 0.9) 92%,
+    var(--color-accent-edge) 100%
+  );
+  opacity: 0;
+  animation: starfield-meteor var(--meteor-dur, 9s) linear infinite;
+  animation-delay: var(--meteor-delay, 0s);
+  /* will-change IS worth it here, unlike on the twinkling stars: this matches
+     two elements, not 196, so the promotion cost is bounded. */
+  will-change: transform, opacity;
+}
+
 /* Reduced motion: hold the drift at its start position, where both copies are
    in place and the field is a complete static sky. Deliberately scoped to
    .starfield-layer rather than a blanket `*` rule — .reveal and .glow-card
@@ -522,7 +597,15 @@ body {
    would trample it.
 
    Twinkling stars settle at their own base opacity, so the field stays a
-   complete static sky rather than freezing mid-pulse at 40% brightness. */
+   complete static sky rather than freezing mid-pulse at 40% brightness.
+
+   Meteors are HIDDEN rather than frozen: a halted meteor would sit on screen
+   as a stray diagonal line with no explanation. Hiding is also why the streak
+   needs no static fallback — the stars alone are the complete reduced-motion
+   sky.
+
+   With drift held, twinkle settled and meteors hidden, every animation in the
+   field now has a defined reduced-motion state. */
 @media (prefers-reduced-motion: reduce) {
   .starfield-layer {
     animation: none;
@@ -531,6 +614,10 @@ body {
   .starfield-star[data-twinkle] {
     animation: none;
     opacity: var(--star-opacity);
+  }
+
+  .starfield-meteor-track {
+    display: none;
   }
 }
 

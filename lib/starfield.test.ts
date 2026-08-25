@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest";
 import {
   LAYERS,
   LAYER_ORDER,
+  METEORS,
+  METEOR_VISIBLE_FRACTION,
   SEEDS,
   SMALL_STAR_RATIO,
   STARS,
@@ -193,6 +195,126 @@ describe("twinkle phase", () => {
           opacity,
         });
       }
+    }
+  });
+});
+
+describe("meteors", () => {
+  it("is a frozen literal holding the designed instances", () => {
+    expect(Object.isFrozen(METEORS)).toBe(true);
+    expect(METEORS).toHaveLength(3);
+    for (const meteor of METEORS) expect(Object.isFrozen(meteor)).toBe(true);
+  });
+
+  it("stays a handful, so the sky never becomes a shower", () => {
+    // Frequency is tuned by instance count, so this is the guard that stops it
+    // creeping upward one meteor at a time.
+    expect(METEORS.length).toBeLessThanOrEqual(4);
+  });
+
+  it("stays occasional rather than a shower", () => {
+    // The visible window is the whole reason meteors read as rare. If this
+    // creeps up, the sky turns into a meteor shower.
+    expect(METEOR_VISIBLE_FRACTION).toBeLessThan(0.25);
+    expect(METEOR_VISIBLE_FRACTION).toBeGreaterThan(0);
+  });
+
+  it("never fires any pair in lockstep", () => {
+    // Checked pairwise across every meteor, not just the first two — adding a
+    // third that happened to be an integer multiple of an existing one would
+    // reintroduce the repeating pattern this guards against.
+    for (let i = 0; i < METEORS.length; i++) {
+      for (let j = i + 1; j < METEORS.length; j++) {
+        const a = METEORS[i].durationSec;
+        const b = METEORS[j].durationSec;
+        expect(a).not.toBe(b);
+        // Non-harmonic: an integer ratio (8 and 16) would resynchronise every
+        // second cycle and read as a pattern rather than as chance.
+        expect(Math.max(a, b) % Math.min(a, b)).not.toBe(0);
+      }
+    }
+  });
+
+  it("starts every meteor mid-cycle, so the sky is never empty on load", () => {
+    for (const meteor of METEORS) {
+      expect(meteor.delaySec).toBeLessThan(0);
+      // A delay beyond one full cycle just wraps — it would still work, but it
+      // signals the value was picked without reference to the duration.
+      expect(Math.abs(meteor.delaySec)).toBeLessThan(meteor.durationSec);
+    }
+  });
+
+  it("fans the meteors out instead of running them parallel", () => {
+    // Angles within a few degrees of each other read as one flock moving in
+    // the same direction. Every pair must differ clearly in heading.
+    for (let i = 0; i < METEORS.length; i++) {
+      for (let j = i + 1; j < METEORS.length; j++) {
+        expect(Math.abs(METEORS[i].angleDeg - METEORS[j].angleDeg)).toBeGreaterThanOrEqual(7);
+      }
+    }
+  });
+
+  it("keeps entry points well apart vertically", () => {
+    // Meteors entering at similar heights converge near the left edge, which
+    // is what made an earlier pass look like the streaks were intersecting.
+    const tops = METEORS.map((m) => m.topPct).sort((a, b) => a - b);
+    for (let i = 1; i < tops.length; i++) {
+      expect(tops[i] - tops[i - 1]).toBeGreaterThanOrEqual(20);
+    }
+  });
+
+  it("never lets two visible meteors approach each other on screen", () => {
+    // The real guard: simulate the paths over a full resync period and assert
+    // no two SIMULTANEOUSLY VISIBLE streaks come close while both are on
+    // screen. Pins the geometry that the angle/entry checks only approximate.
+    const rad = (d: number) => (d * Math.PI) / 180;
+    const paths = METEORS.map((m) => ({
+      m,
+      x0: m.leftPct,
+      y0: m.topPct,
+      x1: m.leftPct + m.lengthVw * Math.cos(rad(m.angleDeg)),
+      y1: m.topPct + m.lengthVw * Math.sin(rad(m.angleDeg)),
+    }));
+
+    const head = (p: (typeof paths)[number], t: number) => {
+      const cycle = p.m.durationSec;
+      const phase = (((t - p.m.delaySec) % cycle) + cycle) % cycle;
+      const f = phase / cycle;
+      if (f > METEOR_VISIBLE_FRACTION) return null; // parked off-screen
+      const u = f / METEOR_VISIBLE_FRACTION;
+      return { x: p.x0 + (p.x1 - p.x0) * u, y: p.y0 + (p.y1 - p.y0) * u };
+    };
+    const onScreen = (p: { x: number; y: number }) =>
+      p.x > -5 && p.x < 105 && p.y > -5 && p.y < 105;
+
+    let closest = Infinity;
+    for (let t = 0; t < 1287; t += 0.1) {
+      const live = paths.map((p) => head(p, t));
+      for (let i = 0; i < live.length; i++) {
+        for (let j = i + 1; j < live.length; j++) {
+          const a = live[i];
+          const b = live[j];
+          if (!a || !b || !onScreen(a) || !onScreen(b)) continue;
+          closest = Math.min(closest, Math.hypot(a.x - b.x, a.y - b.y));
+        }
+      }
+    }
+    // Viewport is 100 units wide. Under ~20 reads as a near-intersection.
+    expect(closest).toBeGreaterThan(20);
+  });
+
+  it("keeps the track geometry sane", () => {
+    for (const meteor of METEORS) {
+      // A shallow tilt. Near 0 reads as a horizontal glitch, near 90 as rain.
+      expect(meteor.angleDeg).toBeGreaterThan(5);
+      expect(meteor.angleDeg).toBeLessThan(45);
+      // Longer than the viewport, so the streak is fully off-screen when parked
+      // at translateX(100%) rather than clipping visibly at the edge.
+      expect(meteor.lengthVw).toBeGreaterThan(100);
+      // Starts left of the viewport so it enters from off-screen.
+      expect(meteor.leftPct).toBeLessThanOrEqual(0);
+      expect(meteor.topPct).toBeGreaterThanOrEqual(0);
+      expect(meteor.topPct).toBeLessThan(100);
     }
   });
 });
