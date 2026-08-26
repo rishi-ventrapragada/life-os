@@ -26,15 +26,31 @@ describe("EXPORT_TABLES", () => {
   });
 });
 
-/** Fake client: records which tables were read, returns one canned row per table. */
-function fakeClient(overrides: Record<string, { data?: unknown[]; error?: { message: string } }> = {}) {
+/**
+ * Fake client: records which tables were read, returns one canned row per table.
+ *
+ * Overrides are written partially (`{ data: [] }`, `{ error: … }`) for brevity,
+ * but `collectExport` destructures BOTH `data` and `error` off every result, so
+ * the fake must hand back both keys with `null` for whichever the test omitted —
+ * matching SelectableClient's `unknown[] | null` / `{ message } | null`. Spreading
+ * over a null-filled base is what normalises the optional input to that shape.
+ */
+type SelectOverride = { data?: unknown[]; error?: { message: string } };
+
+function fakeClient(overrides: Record<string, SelectOverride> = {}) {
   const readTables: string[] = [];
   const client = {
     from(table: string) {
       readTables.push(table);
       return {
-        select: async () =>
-          overrides[table] ?? { data: [{ id: `${table}-1` }], error: null },
+        select: async (): Promise<{
+          data: unknown[] | null;
+          error: { message: string } | null;
+        }> => {
+          const override = overrides[table];
+          if (!override) return { data: [{ id: `${table}-1` }], error: null };
+          return { data: null, error: null, ...override };
+        },
       };
     },
   };
