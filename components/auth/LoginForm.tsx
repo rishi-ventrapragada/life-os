@@ -10,6 +10,34 @@ type Mode = "signin" | "signup";
 const fieldClass =
   "w-full rounded-md border border-(--color-border) bg-(--color-bg) px-3 py-2 text-sm text-(--color-text) focus-visible:outline-2 focus-visible:outline-(--color-accent-edge)";
 
+/** The reveal toggle, centred in the right edge of the password field. */
+const revealBtnClass =
+  "absolute inset-y-0 right-0 flex items-center rounded-md px-3 text-(--color-text-muted) transition-[opacity,transform] duration-150 hover:text-(--color-text) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-accent-edge) active:scale-90";
+
+/**
+ * Eye / eye-with-slash. `off` means the password is currently VISIBLE, so the
+ * struck-through eye is shown — the icon depicts what clicking will do next.
+ * aria-hidden because the button's aria-label already carries the meaning.
+ */
+function EyeIcon({ off }: { off: boolean }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="size-4"
+    >
+      <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z" />
+      <circle cx="12" cy="12" r="3" />
+      {off && <path d="m4 4 16 16" />}
+    </svg>
+  );
+}
+
 /**
  * Email/password auth via Supabase Auth only — no hand-rolled hashing, storage,
  * comparison, or reset. Supabase's own error and rate-limit messages are shown
@@ -19,6 +47,7 @@ export default function LoginForm() {
   const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -58,6 +87,8 @@ export default function LoginForm() {
     setMode((m) => (m === "signin" ? "signup" : "signin"));
     setError(null);
     setNotice(null);
+    // Never carry a revealed password across a mode switch.
+    setShowPassword(false);
   }
 
   /**
@@ -104,17 +135,32 @@ export default function LoginForm() {
 
             <label className="flex flex-col gap-1.5 text-sm text-(--color-text-muted)">
               Password
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete={
-                  mode === "signin" ? "current-password" : "new-password"
-                }
-                required
-                minLength={6}
-                className={fieldClass}
-              />
+              {/* relative wrapper so the reveal toggle can sit inside the field;
+                  the input reserves pr-10 so typed text never runs under it. */}
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete={
+                    mode === "signin" ? "current-password" : "new-password"
+                  }
+                  required
+                  minLength={6}
+                  className={`${fieldClass} pr-10`}
+                />
+                <button
+                  // type="button" is load-bearing: inside a <form>, a bare
+                  // <button> defaults to type="submit" and would sign in.
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  aria-pressed={showPassword}
+                  className={revealBtnClass}
+                >
+                  <EyeIcon off={showPassword} />
+                </button>
+              </div>
             </label>
 
             {error && (

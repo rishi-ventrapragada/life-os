@@ -49,6 +49,26 @@ Once v1's manual tracking is a stable habit:
   this session runs.
 - **NOT-in-v1 list** — PRD §4 (the scope fence this file feeds).
 
+## Settings menu — next items to plug in
+
+The account block is now a settings menu (`components/settings/`): a generic
+`SettingsMenu` shell plus one component per item. Adding a setting means writing
+a component and adding one line to the list in `components/AccountBlock.tsx` —
+the shell needs no change. Candidates, in rough priority order:
+
+- **Password reset / change password** — Supabase `resetPasswordForEmail`. The
+  bigger gap: sign-in has a reveal toggle now, but no recovery path at all if the
+  password is actually forgotten. Note the free-tier auth email rate limit.
+- **Password strength meter** on sign-up (deliberately skipped with the reveal
+  toggle — Supabase already enforces `minLength={6}`).
+- **Account deletion / "delete all my data"** — must delete children before
+  parents (`tasks` FK is not `ON DELETE CASCADE`).
+- **IST timezone override** — currently hard-coded via `getTodayIST()` (Law 3);
+  only worth doing if the owner ever stops living on IST.
+- **Notification / reminder preferences** — pairs with any future reminders work.
+- **Export scope options** (date range, per-section) — the current export is
+  all-or-nothing, which is the right v1 default.
+
 ## Backfilled items (were nowhere durable until this audit)
 
 - **Custom SMTP before multi-user.** Supabase's default auth email is rate-limited
@@ -76,17 +96,9 @@ Once v1's manual tracking is a stable habit:
   downgrade Next to 9.x).
 - **Supabase free-tier pause** after ~1 week of inactivity — daily use is the
   keep-alive; the Step 13 export button is the backup story.
-- **App-wide focus-visible ring may not render** (found SESSION_14, Commit 3).
-  The pattern `outline-none focus-visible:outline-2 focus-visible:outline-(--color-accent-edge)`
-  used on many controls (old Sidebar links, section "+ Add" buttons, AccountBlock,
-  MobileNav anchors) computes `outline-style: none` in Tailwind v4 — width and colour
-  are set but no line draws, so keyboard focus is invisible. The wheel (`OptionWheel`)
-  was fixed by adding `focus-visible:outline-solid`; the same one-class fix applies
-  everywhere the pattern appears. Verified via headless Chrome (real Tab):
-  `outlineStyle` went `none` → `solid` after adding `outline-solid`. Sweep the app and
-  add `focus-visible:outline-solid` (or switch to the `.glow-card:focus-visible`
-  explicit-shorthand pattern) wherever the bug pattern is used. Accessibility fix,
-  not cosmetic — do it in the next UI-polish window.
+- ~~**App-wide focus-visible ring may not render**~~ — **NOT A BUG, closed 2026-07-26.**
+  Focus rings render correctly on v4.3.2; the `outline-solid` requirement was an
+  early-v4-beta issue, N/A here.
 - **`tasks` schema tidy-up** (from AUDIT_1): ~~add `NOT NULL` on `tasks.user_id` and
   the missing `tasks_user_id_idx`/`tasks_area_id_idx` indexes~~ — **DONE in Step 7**,
   migration `20260720122759 harden_tasks_user_id_and_indexes`. **Still open:**
