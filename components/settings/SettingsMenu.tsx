@@ -1,18 +1,13 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { useCallback, useEffect, useRef, type ReactNode } from "react";
 
 /**
- * The account/settings menu shell — mechanics only, no knowledge of any
- * individual setting. Items are passed as children (see components/settings/),
- * so adding a setting later is "write a component, add one line" rather than a
- * change here.
+ * Shared popover-menu shell — mechanics only, no knowledge of its contents.
+ * Two menus use it (see components/AccountBlock.tsx): the gear, holding app
+ * settings, and the profile avatar, holding the signed-in identity and sign
+ * out. Items are passed as children (see components/settings/), so adding one
+ * later is "write a component, add one line" rather than a change here.
  *
  * Interaction model is the one already proven in components/ThemeMenu.tsx:
  * pointerdown to close on outside press (menus should close on press, not
@@ -25,22 +20,48 @@ import {
  * ref array would need index bookkeeping that the DOM already tracks correctly.
  */
 export default function SettingsMenu({
-  /** Trigger content: the signed-in identity. Rendered inside the button. */
   trigger,
+  triggerLabel,
+  triggerClassName,
+  label,
+  open,
+  onOpenChange,
   children,
 }: {
+  /** Trigger content — an icon for the corner buttons. */
   trigger: ReactNode;
+  /** Accessible name for the trigger, since the content is an icon. */
+  triggerLabel: string;
+  /** Trigger styling. Supplied by the caller so one shell serves both buttons. */
+  triggerClassName: string;
+  /** Accessible name for the panel; distinguishes the two menus. */
+  label: string;
+  /**
+   * Controlled open state. Lifted to the parent because the two corner menus
+   * are siblings whose panels overlap each other's trigger — only one may be
+   * open at a time, and neither can know about the other from in here.
+   */
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   children: ReactNode;
 }) {
-  const [open, setOpen] = useState(false);
+  const setOpen = useCallback(
+    (next: boolean | ((v: boolean) => boolean)) => {
+      onOpenChange(typeof next === "function" ? next(open) : next);
+    },
+    [onOpenChange, open],
+  );
   const wrapperRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
-  const close = useCallback((refocus: boolean) => {
-    setOpen(false);
-    if (refocus) triggerRef.current?.focus();
-  }, []);
+  const close = useCallback(
+    (refocus: boolean) => {
+      setOpen(false);
+      if (refocus) triggerRef.current?.focus();
+    },
+    [setOpen],
+  );
 
   // Outside press closes. pointerdown rather than click so it closes on press,
   // matching how native menus feel.
@@ -51,7 +72,7 @@ export default function SettingsMenu({
     }
     document.addEventListener("pointerdown", onPointerDown);
     return () => document.removeEventListener("pointerdown", onPointerDown);
-  }, [open]);
+  }, [open, setOpen]);
 
   /** Every enabled control inside the panel, in DOM order. */
   function items(): HTMLElement[] {
@@ -96,12 +117,16 @@ export default function SettingsMenu({
         <div
           ref={panelRef}
           role="menu"
-          aria-label="Settings"
-          // Opens UPWARD (bottom-full): at md+ this block is pinned to the
-          // bottom-left of the viewport, so downward would render offscreen.
-          // Fluid min() width (Law 5) keeps it inside a 375px viewport.
+          aria-label={label}
           // z-50 clears AccountBlock's md:z-40 and MobileNav's z-30.
-          className="absolute bottom-full left-0 z-50 mb-2 w-[min(18rem,calc(100vw-2rem))] origin-bottom-left overflow-hidden rounded-xl border border-(--color-border) bg-(--color-surface) shadow-lg transition-[opacity,transform] duration-150 motion-reduce:transition-none"
+          // Anchored to the BOTTOM of the trigger and inset from the left by
+          // the button column's width: opening straight up from the lower
+          // button would lay the panel across the button above it, making that
+          // button unclickable while this one is open (measured: the Account
+          // panel covered the gear exactly). Sitting beside the column instead
+          // keeps every trigger reachable whichever menu is open.
+          // Width is fluidly capped so it still fits a 375px viewport.
+          className="absolute bottom-0 left-11 z-50 w-[min(17rem,calc(100vw-4rem))] origin-bottom-left overflow-hidden rounded-xl border border-(--color-border) bg-(--color-surface) shadow-lg transition-[opacity,transform] duration-150 motion-reduce:transition-none"
         >
           {children}
         </div>
@@ -111,26 +136,12 @@ export default function SettingsMenu({
         ref={triggerRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
+        aria-label={triggerLabel}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="flex w-full items-center gap-2 rounded-lg px-1 py-0.5 text-left transition-[opacity,transform] duration-150 motion-reduce:transition-none hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-accent-edge) active:scale-[0.99]"
+        className={triggerClassName}
       >
-        <span className="min-w-0 flex-1">{trigger}</span>
-        {/* Chevron points the way the panel opens, and flips once it is open. */}
-        <svg
-          aria-hidden="true"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className={`size-4 shrink-0 text-(--color-text-muted) transition-transform duration-150 motion-reduce:transition-none ${
-            open ? "rotate-180" : ""
-          }`}
-        >
-          <path d="m6 15 6-6 6 6" />
-        </svg>
+        {trigger}
       </button>
     </div>
   );

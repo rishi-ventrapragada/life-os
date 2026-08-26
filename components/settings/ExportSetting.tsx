@@ -33,9 +33,8 @@ function DownloadIcon() {
  * the shared anon-key client under RLS (lib/exportData), so the file can only
  * ever contain the owner's own rows — no service key, no server endpoint.
  *
- * The hint line under the button is deliberate: a .json file opened in Notepad
- * looks like "random code" to a non-developer, which has already been mistaken
- * for a bug once. The file is correct; the hint says where to open it.
+ * Success is reported by the label flipping to "Exported ✓" rather than a note
+ * under the row, so the menu keeps a single clean line per setting.
  */
 export default function ExportSetting() {
   const [busy, setBusy] = useState(false);
@@ -78,19 +77,13 @@ export default function ExportSetting() {
     <SettingsGroup>
       <SettingsItem
         icon={<DownloadIcon />}
-        label={busy ? "Exporting…" : "Export my data"}
+        label={busy ? "Exporting…" : done ? "Exported ✓" : "Export my data"}
         onClick={handleExport}
         disabled={busy}
       />
-      {error ? (
+      {error && (
         <SettingsNote tone="error" role="alert">
           {error}
-        </SettingsNote>
-      ) : (
-        <SettingsNote role={done ? "status" : undefined}>
-          {done
-            ? "Downloaded. It's a .json file — open it in your browser or VS Code to read it."
-            : "Everything you've saved, as one .json file."}
         </SettingsNote>
       )}
     </SettingsGroup>
