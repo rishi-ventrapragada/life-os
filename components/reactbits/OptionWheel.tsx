@@ -447,7 +447,19 @@ const OptionWheel = ({
 
   useEffect(
     () => () => {
-      if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
+      if (rafRef.current != null) {
+        cancelAnimationFrame(rafRef.current);
+        // Local mod 8 (bugfix): CLEAR the handle, don't just cancel it. `startLoop` guards with
+        // `if (rafRef.current != null) return;`, so a stale non-null handle here permanently
+        // blocks every future start. Under React Strict Mode (the Next dev default) effects run
+        // mount → unmount → remount: the unmount cancelled the pending frame but left the handle
+        // set, so the remount's startLoop early-returned and the rAF loop never ran again.
+        // runFrame is what writes each item's transform, so with no loop all nine options stayed
+        // stacked at one position with `transform: none` — the overlapping sidebar labels.
+        // Measured before the fix: startLoop called twice (rafRef null, then a live handle),
+        // runFrame never fired, 9 options sharing 1 distinct top with no inline styles.
+        rafRef.current = null;
+      }
       audioRef.current?.pause();
     },
     []
