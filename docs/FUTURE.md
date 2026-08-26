@@ -40,9 +40,6 @@ Once v1's manual tracking is a stable habit:
 - **Post-v1 order** — PRD §11: mobile polish → gamification → charts/analytics
   (Wheel of Life radar) → finance module → calendar + Eisenhower → multi-user →
   AI agent.
-- **Mobile-responsive pass** — PRD §8 Step 13 + §11.1 (promoted if phone pain is high).
-- **Data export (JSON download of all user data)** — PRD §8 Step 13; doubles as
-  the free-tier backup story (PRD §10).
 - **Pre-v2 security audit + MFA gate** — SECURITY.md "Before v2": full adversarial
   RLS re-audit, **MFA enabled and required**, input-validation review, `npm audit`
   resolution, Vercel deployment-protection review. Multi-user does NOT open before
@@ -91,9 +88,20 @@ the shell needs no change. Candidates, in rough priority order:
 
 - **Leaked Password Protection** — Pro-plan-gated on this free-tier project; its
   security-advisor WARN is accepted. Revisit if the project upgrades to Pro.
-- **`npm audit`: 2 moderate findings** (Next's bundled postcss, GHSA-qx2v-qp2m-jg93)
-  — parked to the pre-v2 audit. Do NOT run `npm audit fix --force` (it would
-  downgrade Next to 9.x).
+- ~~**`npm audit` findings**~~ — **RESOLVED 2026-08-27: `npm audit` is clean
+  (0 vulnerabilities).** The Next.js 16.2.10 → 16.3.3 upgrade cleared 9 Next
+  advisories plus postcss and sharp; brace-expansion, js-yaml and nanoid were
+  patched in-range beforehand. (The earlier "2 moderate findings" count was
+  wrong — it was 6 high by the time this was checked. The old warning that
+  `npm audit fix --force` would downgrade Next to 9.x was also false: the real
+  fix was a minor bump, now done.)
+- ~~**3 `tsc --noEmit` errors in `lib/exportData.test.ts`**~~ — **RESOLVED
+  2026-08-27.** Long-standing (never recorded here until closure): the fake
+  Supabase client returned partial override objects, so `data`/`error` could be
+  `undefined` where `SelectableClient` requires `unknown[] | null` /
+  `{ message } | null`. Next 16.2.10 tolerated them at build time; 16.3.3
+  promoted them to build-blockers, which forced the fix. Test file only —
+  the export logic never changed.
 - **Supabase free-tier pause** after ~1 week of inactivity — daily use is the
   keep-alive; the Step 13 export button is the backup story.
 - ~~**App-wide focus-visible ring may not render**~~ — **NOT A BUG, closed 2026-07-26.**
@@ -109,19 +117,22 @@ the shell needs no change. Candidates, in rough priority order:
 
 ## Recorded in Step 7, to fix when those files are next open
 
-- **D1 backfill-fix for `GoalsSection` / `TasksSection` (the add-before-ready race).**
-  Step 7's `useHabits` was built with the guard; Goals and Tasks still have the
-  original pattern. In both, the "+ Add" button renders while `status === "loading"`,
-  before `ensureAreasSeeded` populates `areaIds.current`. A submit inside that
-  one-round-trip window calls `patchToRow` with an empty map → `area_id` undefined →
-  the row lands with `area_id = null` → the `life_areas!inner(name)` join hides it
-  from every future fetch: an invisible orphan row while the UI says "save failed."
-  **The fix, already proven in `components/habits/useHabits.ts`:** resolve the area
-  id *before* the insert and hard-bail with a real message if it's missing
-  (`NOT_READY`), plus gate the add control on `status === "ready"` in the section.
-  Apply the same two changes to `components/goals/useGoals.ts` + `GoalsSection.tsx`
-  and `components/tasks/useTasks.ts` + `TasksSection.tsx`. Not done in Step 7 on
-  purpose — one step, one scope (AUDIT_1 D1).
+- **D1 add-before-ready race — ADD PATH FIXED; two narrow gaps remain.**
+  The original bug is closed: `addGoal` and `addTask` now resolve the area id and
+  hard-bail with `NOT_READY` before inserting, matching `useHabits`
+  (`useGoals.ts:95`, `useTasks.ts:121`). No add can produce an orphan row now.
+  **Still open, both only in Goals/Tasks — Habits guards both:**
+  1. **The UPDATE path is unguarded.** `patchToRow` still does
+     `row.area_id = areaIds[patch.area]` (`useGoals.ts:38`, `useTasks.ts:53`),
+     which yields `undefined` on a miss — the same orphan-row mechanism
+     (`area_id = null` → the `life_areas!inner(name)` join hides the row from
+     every future fetch). `useHabits.updateHabit` bails with `NOT_READY` here.
+  2. **The "+ Add" button renders during `status === "loading"`** in
+     `GoalsSection.tsx` / `TasksSection.tsx`. `HabitsSection.tsx` gates it with
+     `disabled={!ready}`.
+  Much harder to hit than the original add-race — reaching it means editing an
+  item's *area* before the seed resolves, and the list is usually empty that
+  early — but still a real gap. Fix when those files are next open.
 - **Triplicated hook pattern.** `useGoals`, `useTasks`, `useHabits` now share the
   same bootstrap-await + optimistic-write + `resyncAfterError` shape. Triplication is
   accepted for v1 pedagogy (AUDIT_1 §3); consider a shared factory only post-v1, and
