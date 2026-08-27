@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import GlowCard from "@/components/GlowCard";
 import SectionHeader from "@/components/SectionHeader";
 import Reveal from "@/components/Reveal";
 import TaskCard from "@/components/tasks/TaskCard";
 import TaskForm from "@/components/tasks/TaskForm";
-import { useTasks } from "@/components/tasks/useTasks";
+import { useTasks } from "@/components/tasks/TasksProvider";
 import { STATUSES, type Task, type Status } from "@/components/tasks/types";
 
 type Filter = "All" | Status;
@@ -24,8 +24,12 @@ export default function TasksSection() {
   }
 
   // Client-side filter over already-fetched rows — no refetch (Increment D).
-  const visible =
-    filter === "All" ? tasks : tasks.filter((t) => t.status === filter);
+  // The provider fetches every task unfiltered, so switching filters is pure
+  // local work: memoised so it only recomputes when the rows or filter change.
+  const visible = useMemo(
+    () => (filter === "All" ? tasks : tasks.filter((t) => t.status === filter)),
+    [tasks, filter],
+  );
 
   return (
     <section id="tasks" className="scroll-mt-8">

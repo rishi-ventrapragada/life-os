@@ -1,6 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { supabase } from "@/lib/supabase";
 import { ensureAreasSeeded } from "@/lib/bootstrap";
 import { useSession } from "@/components/auth/SessionProvider";
@@ -57,8 +65,35 @@ function patchToRow(patch: Partial<Task>, areaIds: Record<string, string>) {
   return row;
 }
 
-/** Supabase-backed CRUD for the Tasks section, scoped to the signed-in user. */
-export function useTasks() {
+export type TasksValue = {
+  tasks: Task[];
+  status: "loading" | "ready" | "error";
+  error: string | null;
+  addTask: (data: Omit<Task, "id">) => Promise<boolean>;
+  updateTask: (id: string, patch: Partial<Task>) => void;
+  deleteTask: (id: string) => Promise<void>;
+};
+
+/**
+ * `undefined` default on purpose — no benign fallback. A consumer mounted
+ * outside the provider would otherwise render an empty list and a no-op
+ * addTask: a silently broken section that looks like "no tasks yet". The
+ * useTasks() hook below throws instead, which is the failure we want.
+ */
+const TasksContext = createContext<TasksValue | undefined>(undefined);
+
+/**
+ * Supabase-backed CRUD for every task consumer, scoped to the signed-in user.
+ *
+ * This body is the former useTasks() hook, relocated unchanged (Increment 1).
+ * The fetch, the optimistic add/update/delete, resyncAfterError, the D1
+ * NOT_READY guard and the areaIds ref all behave exactly as before; the only
+ * thing that changed is WHERE the state lives. Previously TodaySection and
+ * TasksSection each mounted their own instance, so the page fetched `tasks`
+ * twice and the two copies drifted: an add in one was invisible in the other
+ * until a refresh. Now one instance sits above both.
+ */
+function useTasksState(): TasksValue {
   const { session } = useSession();
   const userId = session?.user.id;
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -77,6 +112,11 @@ export function useTasks() {
     tasksRef.current = tasks;
   }, [tasks]);
 
+  /**
+   * Fetches every task row — deliberately unfiltered. Section-level filtering
+   * is a client-side pass over these rows, so switching filters never hits the
+   * network.
+   */
   const refetch = useCallback(async () => {
     const { data, error: fetchError } = await supabase
       .from("tasks")
@@ -176,4 +216,26 @@ export function useTasks() {
   }
 
   return { tasks, status, error, addTask, updateTask, deleteTask };
+}
+
+/**
+ * Mounts the single task state for the whole authed tree. Placed inside
+ * AuthGate's logged-in branch (app/page.tsx) for two reasons: the fetch must
+ * never run for a logged-out visitor, and a sign-out unmounts this provider so
+ * the next user cannot inherit the previous one's rows.
+ */
+export default function TasksProvider({ children }: { children: ReactNode }) {
+  const value = useTasksState();
+  return <TasksContext.Provider value={value}>{children}</TasksContext.Provider>;
+}
+
+/** Read the shared task state anywhere below <TasksProvider>. */
+export function useTasks(): TasksValue {
+  const ctx = useContext(TasksContext);
+  if (!ctx) {
+    throw new Error(
+      "useTasks must be used inside <TasksProvider>. Wrap the authed tree in app/page.tsx.",
+    );
+  }
+  return ctx;
 }

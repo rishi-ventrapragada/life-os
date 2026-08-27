@@ -9,7 +9,7 @@ import TodayTasks from "@/components/today/TodayTasks";
 import TodayJournalLine from "@/components/today/TodayJournalLine";
 import WeekProgress from "@/components/today/WeekProgress";
 import { useHabits } from "@/components/habits/useHabits";
-import { useTasks } from "@/components/tasks/useTasks";
+import { useTasks } from "@/components/tasks/TasksProvider";
 import { getTodayIST } from "@/lib/dates";
 
 /**
@@ -21,10 +21,10 @@ import { getTodayIST } from "@/lib/dates";
  * from the existing useHabits()/useTasks() hooks rather than new queries, so
  * checking a habit here runs exactly the same write path as the Habits section.
  *
- * Known v1 trade-off (Step 9 decision F, recorded in FUTURE.md): this mounts
- * its own hook instances, so the Habits/Tasks sections hold independent state
- * and won't visibly update until a refresh. Accepted rather than refactoring
- * three working slices; lifting state into a provider is the fix when it bites.
+ * Tasks now come from the shared TasksProvider (Increment 1), so adding or
+ * completing a task here and in the Tasks section move one state: both update
+ * instantly, no refresh. Habits still mounts its own useHabits() instance and
+ * keeps the Step 9 decision F staleness — that lift is a separate increment.
  */
 export default function TodaySection() {
   const habits = useHabits();

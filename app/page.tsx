@@ -3,6 +3,7 @@ import AuthGate from "@/components/auth/AuthGate";
 import WheelNav from "@/components/WheelNav";
 import MobileNav from "@/components/MobileNav";
 import AccountBlock from "@/components/AccountBlock";
+import TasksProvider from "@/components/tasks/TasksProvider";
 import TodaySection from "@/components/sections/TodaySection";
 import AnalyticsSection from "@/components/sections/AnalyticsSection";
 import GoalsSection from "@/components/sections/GoalsSection";
@@ -17,25 +18,31 @@ export default function Home() {
   return (
     <SessionProvider>
       <AuthGate>
-        {/* relative z-10 lifts the app above the fixed StarField, which sits at
-            z-0 (it cannot go negative — body paints --color-bg over it). */}
-        <div className="relative z-10 flex flex-1">
-          <WheelNav />
-          <main className="min-w-0 flex-1 px-4 py-10 pb-28 sm:px-8 sm:py-16 sm:pb-28">
-            <div className="mx-auto flex w-full max-w-5xl flex-col gap-16 sm:gap-24">
-              <TodaySection />
-              <AnalyticsSection />
-              <GoalsSection />
-              <HabitsSection />
-              <TasksSection />
-              <AcademicsSection />
-              <FitnessSection />
-              <JournalSection />
-              <PomodoroSection />
-              <AccountBlock />
-            </div>
-          </main>
-        </div>
+        {/* TasksProvider holds the one shared task state every section reads.
+            It sits inside AuthGate so its fetch never runs for a logged-out
+            visitor, and so signing out unmounts it rather than leaking the
+            previous user's rows into the next session. */}
+        <TasksProvider>
+          {/* relative z-10 lifts the app above the fixed StarField, which sits at
+              z-0 (it cannot go negative — body paints --color-bg over it). */}
+          <div className="relative z-10 flex flex-1">
+            <WheelNav />
+            <main className="min-w-0 flex-1 px-4 py-10 pb-28 sm:px-8 sm:py-16 sm:pb-28">
+              <div className="mx-auto flex w-full max-w-5xl flex-col gap-16 sm:gap-24">
+                <TodaySection />
+                <AnalyticsSection />
+                <GoalsSection />
+                <HabitsSection />
+                <TasksSection />
+                <AcademicsSection />
+                <FitnessSection />
+                <JournalSection />
+                <PomodoroSection />
+                <AccountBlock />
+              </div>
+            </main>
+          </div>
+        </TasksProvider>
         <MobileNav />
       </AuthGate>
     </SessionProvider>
