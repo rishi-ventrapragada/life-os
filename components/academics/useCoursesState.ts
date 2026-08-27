@@ -25,7 +25,7 @@ function rowToCourse(row: CourseRow): Course {
  * Same shape as useTasks/useGoals but with no life_areas (courses aren't
  * tagged by area), so no ensureAreasSeeded and no area-id guard.
  */
-export function useCourses() {
+export function useCoursesState() {
   const { session } = useSession();
   const userId = session?.user.id;
   const [courses, setCourses] = useState<Course[]>([]);

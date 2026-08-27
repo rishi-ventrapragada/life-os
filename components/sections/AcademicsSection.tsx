@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import GlowCard from "@/components/GlowCard";
 import SectionHeader from "@/components/SectionHeader";
 import Reveal from "@/components/Reveal";
@@ -10,8 +10,10 @@ import AssignmentForm from "@/components/academics/AssignmentForm";
 import AssignmentList from "@/components/academics/AssignmentList";
 import TimetableSlotForm from "@/components/academics/TimetableSlotForm";
 import WeeklyTimetable from "@/components/academics/WeeklyTimetable";
-import { useCourses } from "@/components/academics/useCourses";
-import { useAssignments } from "@/components/academics/useAssignments";
+import {
+  useCourses,
+  useAssignments,
+} from "@/components/academics/AcademicsProvider";
 import { useTimetable } from "@/components/academics/useTimetable";
 import type {
   Assignment,
@@ -26,9 +28,11 @@ const subheading =
   "font-display text-sm uppercase tracking-[0.2em] text-(--color-text-muted)";
 
 export default function AcademicsSection() {
+  // Courses and assignments come from AcademicsProvider — one shared instance,
+  // so Today's "What's due" and this section never disagree. The provider owns
+  // the course-id list the assignment write guard needs.
   const courses = useCourses();
-  const courseIds = useMemo(() => courses.courses.map((c) => c.id), [courses.courses]);
-  const assignments = useAssignments(courseIds);
+  const assignments = useAssignments();
   const timetable = useTimetable();
 
   const [addingCourse, setAddingCourse] = useState(false);

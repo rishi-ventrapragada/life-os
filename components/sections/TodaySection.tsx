@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import GlowCard from "@/components/GlowCard";
 import SectionHeader from "@/components/SectionHeader";
 import Reveal from "@/components/Reveal";
@@ -10,6 +11,11 @@ import TodayJournalLine from "@/components/today/TodayJournalLine";
 import WeekProgress from "@/components/today/WeekProgress";
 import { useHabits } from "@/components/habits/HabitsProvider";
 import { useTasks } from "@/components/tasks/TasksProvider";
+import {
+  useAssignments,
+  useCourses,
+} from "@/components/academics/AcademicsProvider";
+import { collectDueItems, type DueItem } from "@/lib/dueItems";
 import { getTodayIST } from "@/lib/dates";
 
 /**
@@ -30,7 +36,33 @@ import { getTodayIST } from "@/lib/dates";
 export default function TodaySection() {
   const habits = useHabits();
   const tasks = useTasks();
+  const assignments = useAssignments();
+  const courses = useCourses();
   const todayIST = getTodayIST();
+
+  // Tasks and assignments merged into one due-sorted list (lib/dueItems.ts).
+  const dueItems = useMemo(
+    () =>
+      collectDueItems(
+        tasks.tasks,
+        assignments.assignments,
+        courses.courses,
+        todayIST,
+      ),
+    [tasks.tasks, assignments.assignments, courses.courses, todayIST],
+  );
+
+  // Both sources must be loaded before a row is clickable: a click writes to
+  // whichever table the item came from.
+  const dueReady = tasks.status === "ready" && assignments.status === "ready";
+
+  function completeDueItem(item: DueItem) {
+    if (item.kind === "task") {
+      tasks.updateTask(item.sourceId, { status: "Done" });
+    } else {
+      void assignments.updateAssignment(item.sourceId, { status: "Done" });
+    }
+  }
 
   return (
     <section id="today" className="scroll-mt-8">
@@ -71,21 +103,18 @@ export default function TodaySection() {
               <h3 className="font-display text-xs uppercase tracking-[0.2em] text-(--color-text-muted)">
                 What&apos;s due
               </h3>
-              {tasks.status === "loading" ? (
+              {tasks.status === "loading" || assignments.status === "loading" ? (
                 <p className="text-sm text-(--color-text-muted)">Loading tasks…</p>
               ) : (
                 <TodayTasks
-                  tasks={tasks.tasks}
-                  todayIST={todayIST}
-                  ready={tasks.status === "ready"}
-                  onComplete={(task) =>
-                    tasks.updateTask(task.id, { status: "Done" })
-                  }
+                  items={dueItems}
+                  ready={dueReady}
+                  onComplete={completeDueItem}
                 />
               )}
-              {tasks.error && (
+              {(tasks.error || assignments.error) && (
                 <p role="alert" className="text-sm text-red-400">
-                  {tasks.error}
+                  {tasks.error ?? assignments.error}
                 </p>
               )}
             </div>

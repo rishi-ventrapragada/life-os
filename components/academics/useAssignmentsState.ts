@@ -39,7 +39,7 @@ function rowToAssignment(row: AssignmentRow): Assignment {
  * (parent-ownership EXISTS), so addAssignment must resolve a real course_id
  * before inserting — the parent-ownership analogue of the D1 area-id guard.
  */
-export function useAssignments(knownCourseIds: string[]) {
+export function useAssignmentsState(knownCourseIds: string[]) {
   const { session } = useSession();
   const userId = session?.user.id;
   const [assignments, setAssignments] = useState<Assignment[]>([]);
