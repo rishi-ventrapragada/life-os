@@ -133,17 +133,40 @@ the shell needs no change. Candidates, in rough priority order:
   Much harder to hit than the original add-race — reaching it means editing an
   item's *area* before the seed resolves, and the list is usually empty that
   early — but still a real gap. Fix when those files are next open.
-- **Triplicated hook pattern.** `useGoals`, `useTasks`, `useHabits` now share the
-  same bootstrap-await + optimistic-write + `resyncAfterError` shape. Triplication is
-  accepted for v1 pedagogy (AUDIT_1 §3); consider a shared factory only post-v1, and
-  only if a fourth copy appears.
-- **Lift habits/tasks state into a provider (Step 9 decision F).** `TodaySection` mounts
-  its own `useHabits()`/`useTasks()` instances alongside `HabitsSection`/`TasksSection`,
-  so the page fetches each dataset twice and — the part that actually shows — **the two
-  copies hold independent state: checking a habit in Today does not visibly update the
-  Habits section until a refresh** (and vice versa). Accepted for v1: a single user, two
-  small extra queries, and the alternative was refactoring three working slices mid-step.
-  **The fix when it bites:** wrap the page in `HabitsProvider`/`TasksProvider` (or lift
-  the hooks into a shared context in `app/page.tsx`) so every section reads one instance.
-  **Trigger to do it:** the stale-until-refresh behaviour becoming annoying in daily use,
-  or a fourth consumer of either hook appearing.
+- **Triplicated hook pattern — STILL OPEN, and distinct from the provider lift below.**
+  `useGoals`, `useTasks`, `useHabits` share the same bootstrap-await + optimistic-write
+  + `resyncAfterError` shape. This is *code* duplication across the three files, not the
+  *state* duplication the provider lift fixed — sharing one instance per dataset does
+  nothing to deduplicate the near-identical bodies, so the lift did not close this.
+  (The bodies now live in `TasksProvider.tsx` / `HabitsProvider.tsx` / `useGoals.ts`.)
+  Triplication was accepted for v1 pedagogy (AUDIT_1 §3), with "revisit if a fourth copy
+  appears" as the trigger. **That trigger fired long ago:** `resyncAfterError` now
+  appears in ten files — the three above plus `useCoursesState`, `useAssignmentsState`,
+  `useTimetable`, `useWorkoutLog`, `useWorkoutSplit`, `useJournal` and `useDashboard`.
+  Still deliberately deferred, since a shared factory touches every working slice at
+  once, but it is no longer waiting on a trigger — only on a deliberate refactor session.
+- ~~**Lift habits/tasks state into a provider (Step 9 decision F).**~~ — **RESOLVED
+  2026-08-27: both datasets now live in one shared provider each** — tasks in
+  `TasksProvider` (`42d757a`), habits in `HabitsProvider` (`c68e7b1`), both mounted
+  inside `AuthGate` in `app/page.tsx`. `TodaySection` used to mount its own
+  `useHabits()`/`useTasks()` instances alongside `HabitsSection`/`TasksSection`, so the
+  page fetched each dataset twice and the copies held independent state: a check-off or
+  an add in one section stayed invisible in the other until a refresh. Each hook body was
+  relocated unchanged (git recorded both as renames) and `useTasks()`/`useHabits()` kept
+  their names as context reads, so consumers only changed an import; using either outside
+  its provider now throws instead of silently rendering an empty list. Streaks, the month
+  grid and `WeekProgress` came along for free — they already derived from `checkDates`
+  during render. The habits lift also split the four write paths into `habitsWrites.ts`
+  to stay under the ~200-line cap (Law 1). **Extended 2026-08-27 (`f592529`):** courses
+  and assignments got the same treatment in `AcademicsProvider`, so Today's "What's due"
+  and the Academics section now share one instance too — that lift is what let Today
+  merge assignments into the due list without a second fetch going stale.
+- **Analytics radar still reads its own query — the last cross-section staleness.**
+  `useDashboard` → `components/dashboard/dashboardData.ts` is a deliberately independent
+  read path (it needs `created_at` for the per-habit denominator and never renders a
+  habit name), so it is NOT covered by the provider lift above: checking a habit still
+  won't move the radar until a refresh. Fixing it means either subscribing the dashboard
+  to habit changes or merging the two fetches — and merging would let one section's needs
+  silently widen the other's query, which is exactly why the paths were separated. A real
+  design decision, not a mechanical lift; deferred until the radar's staleness actually
+  annoys in daily use.
