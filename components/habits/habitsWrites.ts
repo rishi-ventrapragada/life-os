@@ -1,9 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { ensureAreasSeeded } from "@/lib/bootstrap";
-import { useSession } from "@/components/auth/SessionProvider";
 import { getTodayIST } from "@/lib/dates";
 import type { LifeArea } from "@/lib/lifeAreas";
 import type { Habit } from "@/components/habits/types";
@@ -12,52 +9,44 @@ import {
   NOT_READY,
   SAVE_FAILED,
   UNIQUE_VIOLATION,
-  fetchActiveHabits,
   rowToHabit,
   type HabitRow,
 } from "@/components/habits/habitsData";
 
-/** Supabase-backed CRUD for the Habits section, scoped to the signed-in user. */
-export function useHabits() {
-  const { session } = useSession();
-  const userId = session?.user.id;
-  const [habits, setHabits] = useState<Habit[]>([]);
-  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
-  const [error, setError] = useState<string | null>(null);
-  const areaIds = useRef<Record<string, string>>({});
+/**
+ * The Habits slice's write mechanics — add, update, archive and the daily
+ * check-off — split out of HabitsProvider.tsx to keep that file under the
+ * ~200-line cap (Law 1), the same way habitsData.ts holds the read path.
+ *
+ * These are NOT pure like habitsData.ts: every one of them writes React state
+ * optimistically before awaiting Supabase, which is what makes the UI feel
+ * instant. So rather than free functions, they are built by a factory that
+ * takes the provider's state setters once and closes over them. The function
+ * bodies are byte-identical to the versions that lived in the provider —
+ * this was a mechanical extraction, not a rewrite.
+ */
+export type HabitWriteDeps = {
+  setHabits: React.Dispatch<React.SetStateAction<Habit[]>>;
+  setError: (message: string | null) => void;
+  /**
+   * life_area name -> row id; empty until the seed resolves (the D1 guard).
+   *
+   * A getter, not the ref itself: React 19's lint forbids handing a ref to a
+   * function during render, since it cannot prove the value isn't read there.
+   * The read still happens inside the handlers at call time, exactly as it did
+   * when these functions closed over `areaIds.current` directly.
+   */
+  getAreaIds: () => Record<string, string>;
+  /** Re-reads from the database after a failed write so the UI never lies. */
+  resyncAfterError: () => Promise<void>;
+};
 
-  const refetch = useCallback(async () => {
-    setHabits(await fetchActiveHabits());
-  }, []);
-
-  useEffect(() => {
-    if (!userId) return; // the gate guarantees a session; guard defensively
-    let cancelled = false;
-    (async () => {
-      try {
-        const boot = await ensureAreasSeeded(userId);
-        areaIds.current = boot.areaIdByName;
-        await refetch();
-        if (!cancelled) setStatus("ready");
-      } catch (err) {
-        console.error("Habits bootstrap failed:", err);
-        if (!cancelled) {
-          setStatus("error");
-          setError("Couldn't reach the database. Refresh to retry.");
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [refetch, userId]);
-
-  /** Resync from the database after a failed write so the UI never lies. */
-  async function resyncAfterError() {
-    setError(SAVE_FAILED);
-    await refetch().catch(() => {});
-  }
-
+export function createHabitWrites({
+  setHabits,
+  setError,
+  getAreaIds,
+  resyncAfterError,
+}: HabitWriteDeps) {
   /**
    * D1 fix — deliberately NOT the Goals/Tasks add-path. Those call patchToRow
    * with a possibly-empty areaIds map, so a submit before the seed resolves
@@ -68,7 +57,7 @@ export function useHabits() {
    */
   async function addHabit(data: { name: string; area: LifeArea }): Promise<boolean> {
     setError(null);
-    const areaId = areaIds.current[data.area];
+    const areaId = getAreaIds()[data.area];
     if (!areaId) {
       setError(NOT_READY);
       return false;
@@ -99,7 +88,7 @@ export function useHabits() {
     const row: Record<string, unknown> = {};
     if (patch.name !== undefined) row.name = patch.name;
     if (patch.area !== undefined) {
-      const areaId = areaIds.current[patch.area];
+      const areaId = getAreaIds()[patch.area];
       if (!areaId) {
         setError(NOT_READY);
         return false;
@@ -186,13 +175,5 @@ export function useHabits() {
     }
   }
 
-  return {
-    habits,
-    status,
-    error,
-    addHabit,
-    updateHabit,
-    archiveHabit,
-    toggleToday,
-  };
+  return { addHabit, updateHabit, archiveHabit, toggleToday };
 }

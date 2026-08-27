@@ -8,7 +8,7 @@ import TodayHabits from "@/components/today/TodayHabits";
 import TodayTasks from "@/components/today/TodayTasks";
 import TodayJournalLine from "@/components/today/TodayJournalLine";
 import WeekProgress from "@/components/today/WeekProgress";
-import { useHabits } from "@/components/habits/useHabits";
+import { useHabits } from "@/components/habits/HabitsProvider";
 import { useTasks } from "@/components/tasks/TasksProvider";
 import { getTodayIST } from "@/lib/dates";
 
@@ -21,10 +21,11 @@ import { getTodayIST } from "@/lib/dates";
  * from the existing useHabits()/useTasks() hooks rather than new queries, so
  * checking a habit here runs exactly the same write path as the Habits section.
  *
- * Tasks now come from the shared TasksProvider (Increment 1), so adding or
- * completing a task here and in the Tasks section move one state: both update
- * instantly, no refresh. Habits still mounts its own useHabits() instance and
- * keeps the Step 9 decision F staleness — that lift is a separate increment.
+ * Tasks and habits now come from the shared TasksProvider/HabitsProvider
+ * (Increments 1 and 2), so a check-off or an add here and in the Habits/Tasks
+ * sections move one state: both update instantly, no refresh. The Analytics
+ * radar still reads its own dedicated query (components/dashboard/), so it
+ * keeps the Step 9 decision F staleness — see FUTURE.md.
  */
 export default function TodaySection() {
   const habits = useHabits();

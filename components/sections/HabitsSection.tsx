@@ -6,7 +6,7 @@ import SectionHeader from "@/components/SectionHeader";
 import Reveal from "@/components/Reveal";
 import HabitCard from "@/components/habits/HabitCard";
 import HabitForm from "@/components/habits/HabitForm";
-import { useHabits } from "@/components/habits/useHabits";
+import { useHabits } from "@/components/habits/HabitsProvider";
 import type { LifeArea } from "@/lib/lifeAreas";
 
 export default function HabitsSection() {
